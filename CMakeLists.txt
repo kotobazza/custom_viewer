@@ -4,8 +4,26 @@
 
 cmake_minimum_required (VERSION 3.30)
 
-project(cutsom-viewer LANGUAGES CXX VERSION 1.0.0)
+project(custom-viewer LANGUAGES CXX VERSION 1.0.0)
 add_executable(custom-viewer src/main.cpp)
+
+file(GLOB headers "src/Headers/*.hpp")
+foreach(file ${headers})
+  target_sources(custom-viewer PUBLIC ${file})
+endforeach()
+
+file(GLOB sources "src/Sources/*.cpp")
+foreach(file ${sources})
+  target_sources(custom-viewer PRIVATE ${file})
+endforeach()
+
+target_include_directories(custom-viewer
+PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/src/Headers
+PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/src//Sources
+)
+
 
 
 include(FetchContent)
@@ -71,7 +89,7 @@ target_link_libraries( custom-viewer
   PRIVATE ftxui::screen
   PRIVATE ftxui::dom
   PRIVATE ftxui::component 
-  PUBLIC archive
+  PRIVATE archive
   PRIVATE Boost::filesystem
   PRIVATE Boost::program_options
   PRIVATE Boost::property_tree
