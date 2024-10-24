@@ -1,70 +1,73 @@
-#include "FileManipulations.hpp"
+#include "FileManipulations.h"
 #include <filesystem>
-#include <string>
-#include <vector>
 #include <fstream>
 #include <iostream>
-#include <string_view>
-
 
 
 namespace cv{
 
-bool FileManipulation::createNewFile(std::string path)
+bool FileManipulation::createNewFile(std::string_view path)
 {
+    std::filesystem::path relativePath{FileManipulation::clearNonRelativePath(path)};
+
     //относительные пути?
-    path = FileManipulation::clearNonRelativePath(path);
-    std::filesystem::path filePath {path};
-    std::filesystem::create_directories(std::filesystem::current_path() / filePath.parent_path());  
-    std::ofstream fout {std::filesystem::current_path() / filePath};
+    if(isExistingPath(relativePath.u8string()))
+        return false;
+    std::filesystem::create_directories(std::filesystem::current_path() / relativePath.parent_path());  
+    std::ofstream fout {std::filesystem::current_path() / relativePath};
     fout.close();
 
     return true;
 } 
 
 
-bool FileManipulation::createNewDirectory(std::string path)
+bool FileManipulation::createNewDirectory(std::string_view path)
 {
-    path = FileManipulation::clearNonRelativePath(path);
+    std::filesystem::path relativePath{FileManipulation::clearNonRelativePath(path)};
     std::filesystem::create_directories(std::filesystem::current_path() / path);
+
     return true;
 }
 
-
-std::string FileManipulation::clearNonRelativePath(std::string path)
+std::string FileManipulation::clearNonRelativePath(std::string_view path)
 {
+    std::string path_temp{path};
     size_t pos = 0;
-    while((pos = path.find("../", pos)) != std::string::npos)
+    while((pos = path_temp.find("../", pos)) != std::string::npos)
     {
-        path.erase(pos, 3);
+        path_temp.erase(pos, 3);
     }
-    std::cout << path<<std::endl;
-    return path;
+    return path_temp;
 }
 
 
 
-bool FileManipulation::isExistingPath(std::string path)
+bool FileManipulation::isExistingPath(std::string_view path)
 {
     return std::filesystem::exists(clearNonRelativePath(path));
 }
 
 
-bool FileManipulation::isFile(std::string path)
+bool FileManipulation::isFile(std::string_view path)
 {
     return !std::filesystem::is_directory(clearNonRelativePath(path));
 }
 
 
-bool FileManipulation::isDirectory(std::string path)
+bool FileManipulation::isDirectory(std::string_view path)
 {
     return std::filesystem::is_directory(clearNonRelativePath(path));
 }
 
 
-bool FileManipulation::deletePath(std::string path)
+bool FileManipulation::deletePath(std::string_view path)
 {
     return std::filesystem::remove_all(clearNonRelativePath(path));
+}
+
+bool FileManipulation::isEmpty(std::string_view path)
+{
+    return std::filesystem::is_empty(clearNonRelativePath(path));
 }
 
 }

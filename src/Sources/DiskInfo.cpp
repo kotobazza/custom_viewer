@@ -1,4 +1,4 @@
-#include "DiskInfo.hpp"
+#include "DiskInfo.h"
 #include <mntent.h>
 #include <iostream>
 
@@ -54,12 +54,13 @@ std::vector<DiskInfoRecord> DiskInfo::getMountedPoints()
             unsigned long total = stat.f_blocks * stat.f_frsize;
             unsigned long free = stat.f_bfree * stat.f_frsize;
 
-            DiskInfoRecord record = DiskInfoRecord(
+            DiskInfoRecord record = DiskInfoRecord{
                 mnt->mnt_fsname, 
                 mnt->mnt_dir,
                 mnt->mnt_type,
                 total,
-                free);
+                free
+            };
 
 
             records.push_back(record);

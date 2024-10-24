@@ -6,8 +6,21 @@ cmake_minimum_required (VERSION 3.30)
 
 project(custom-viewer LANGUAGES CXX VERSION 1.0.0)
 add_executable(custom-viewer src/main.cpp)
+set_target_properties( custom-viewer
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
 
-file(GLOB headers "src/Headers/*.hpp")
+# Получаем список всех заголовочных файлов
+# file(GLOB_RECURSE headers "src/Headers/*.h")
+
+# Получаем список всех исходных файлов
+# file(GLOB_RECURSE sources "src/Sources/*.cpp")
+
+
+file(GLOB headers "src/Headers/*.h")
 foreach(file ${headers})
   target_sources(custom-viewer PUBLIC ${file})
 endforeach()
@@ -21,7 +34,7 @@ target_include_directories(custom-viewer
 PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}/src/Headers
 PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/src//Sources
+  ${CMAKE_CURRENT_LIST_DIR}/src/Sources
 )
 
 
@@ -85,7 +98,19 @@ FetchContent_MakeAvailable(Boost)
 
 
 
+
+# # Создаем библиотеку из исходных файлов
+# add_library(custom-viewer-lib ${sources})
+
+# # Добавляем каталоги с заголовочными и исходными файлами
+# target_include_directories(custom-viewer-lib
+#   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/Headers
+#   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/Sources
+# )
+
+
 target_link_libraries( custom-viewer
+  # PUBLIC custom-viewer-lib
   PRIVATE ftxui::screen
   PRIVATE ftxui::dom
   PRIVATE ftxui::component 
