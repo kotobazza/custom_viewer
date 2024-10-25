@@ -63,6 +63,9 @@ public:
     static bool isDirectory(std::string_view path);//
     static bool isFile(std::string_view path);//
     static bool isEmpty(std::string_view path);//
+    static bool isArchive(std::string_view path);
+
+    static std::string transformPathFromArchiveToFolder(std::string_view path);
     
 };
 
