@@ -70,4 +70,21 @@ bool FileManipulation::isEmpty(std::string_view path)
     return std::filesystem::is_empty(clearNonRelativePath(path));
 }
 
+std::vector<std::string> FileManipulation::getDirectoryEntries(std::string_view path)
+{
+    std::vector<std::string> contents;
+
+    for (const auto& entry : std::filesystem::directory_iterator(std::string(path))) {
+        contents.push_back(entry.path().filename().string());
+    }
+
+    return contents;
 }
+
+
+
+
+}
+
+
+

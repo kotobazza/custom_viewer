@@ -1,6 +1,7 @@
 #pragma once 
 #include <string>
 #include <string_view>
+#include <vector>
 
 
 
@@ -55,6 +56,8 @@ public:
     static bool createNewDirectory(std::string_view path);//
 
     static bool deletePath(std::string_view path);//
+
+    static std::vector<std::string> getDirectoryEntries(std::string_view path);
 
     static bool isExistingPath(std::string_view path);//
     static bool isDirectory(std::string_view path);//
