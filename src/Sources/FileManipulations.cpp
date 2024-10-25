@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string>
 
 
 namespace cv{
@@ -82,7 +83,28 @@ std::vector<std::string> FileManipulation::getDirectoryEntries(std::string_view 
 }
 
 
+bool FileManipulation::isArchive(std::string_view path)
+{
+    std::ifstream file(std::string(path), std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
 
+    // Проверяем сигнатуру zip-архива
+    char header[4];
+    file.read(header, 4);
+    if (header[0] == 'P' && header[1] == 'K' && header[2] == '\x03' && header[3] == '\x04') {
+        return true;
+    }
+
+    return false;
+}
+
+std::string FileManipulation::transformPathFromArchiveToFolder(std::string_view path)
+{
+    std::filesystem::path zipPath{std::string(path)};
+    return zipPath.stem().string();
+}
 
 }
 

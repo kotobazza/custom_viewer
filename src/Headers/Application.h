@@ -19,15 +19,31 @@
 
 class Application{
 private:
-    std::vector<std::string> tabValues{"Disk Usage", "Filesystem", "Text Works", "Dictionary"};
-    
+    std::vector<std::string> tabValues{"Disk Usage", "Filesystem", "Dictionary"};
+    bool modalSureToDelete{false};
+    bool modalSureToWrite{false};
+    bool modalSureToUnzip{false};
+    bool modalWrongPath{false};
+    bool modalFileCanNotBeOverwritten{false};
     //* Modifiers and Selectors
+
     int tabSelected{0};
-    int leftPannelSizeModifier{30};
+    int leftPannelSizeModifier{60};
     int mainMenuSelected{0};
     int filesystemMenuSelected{0};
 
-    //* InputStrings
+    std::string commandExecutionString{};
+
+    bool isPathFile{false};
+    bool isPathArchive{false};
+    
+    std::string plainTextPlaceholder{"Open some text file..."};
+
+    std::string usingPath{std::filesystem::current_path().string()};
+    std::string openedFilePath{};
+
+
+    //* InputStringsmainPathInputVal
     std::string mainPathInputVal{};
 
     //* DirMenuEntries
@@ -62,13 +78,7 @@ private:
     ftxui::Component filesystemLeftPannel;
     ftxui::Component filesystemRightPannel;
     ftxui::Component filesystemDownPannel;
-
-
-    //* TextWorksPannels
-    ftxui::Component textUsageContainer;
-    ftxui::Component textworksLeftPannel;
-    ftxui::Component textworksRightPannel;
-    ftxui::Component textworksDownPannel;
+    std::string plainTextString{};
 
 
     //* DictionaryPannels
@@ -83,25 +93,29 @@ private:
 
     //* Down Pannel Objects
     ftxui::Component mainPathInput;
-    ftxui::Component pathInputEnter;
-    ftxui::Component pathInputCreate;
-    ftxui::Component pathInputDelete;
-    
+
 
 
 
 
     void createDiskUsageTable();
-    void createDownPannel();
 
     void createFilesystemContainer(std::string path);
-    void createTextWorksContainer(std::string path);
     void createDictionaryContainer(std::string path);
 
 
+    void openPath(std::string path);
+    void openParentPath(std::string path);
+    void moveFileMenuToPath(std::string path);
+    void clearPlainText();
+    void saveFileText();
+    void unzipArchive();
+    
+
+    std::function<void()> exitorClosure;
 
 public:
-    Application();
+    Application(std::function<void()>exitor);
 
 
     ftxui::Component render();
