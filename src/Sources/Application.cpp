@@ -393,14 +393,13 @@ void Application::createFilesystemContainer(std::string path)
             })
         }),
         Container::Vertical({
-                    Button("Delete", [&]{
+            Button("Delete", [&]{
                 if(cv::FileManipulation::isExistingPath(usingPath + "/" + mainPathInputVal)){
                     openedFilePath = usingPath+'/'+dirEntries[filesystemMenuSelected];
                     modalSureToDelete=true;
                     mainPathInputVal="";
                 }
-            }),
-            Button("Create archive", [&]{})
+            })
             
 
         }),
