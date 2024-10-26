@@ -25,7 +25,7 @@ DictionaryDeserializationResult XmlWorker::deserializeDictionary(std::string_vie
     } catch (const std::exception& e) {
         std::cout << e.what() << std::endl;
         return DictionaryDeserializationResult{
-            ActionState::XmlFailed,
+            ActionState::StructFailed,
             Dictionary{}
         };
     }
@@ -35,32 +35,50 @@ DictionaryDeserializationResult XmlWorker::deserializeDictionary(std::string_vie
         id = pt.get<int>("dictionary.dictionary_id");
     else
         return DictionaryDeserializationResult{
-            ActionState::XmlFailed,
+            ActionState::ParseFailed,
             Dictionary{}
         };
 
-    if(pt.count("dictionary.source")==0)
+    std::string name;
+    if(pt.get_optional<std::string>("dictionary.name"))
+        name = pt.get<std::string>("dictionary.name");
+    else
         return DictionaryDeserializationResult{
-            ActionState::XmlFailed,
+            ActionState::ParseFailed,
             Dictionary{}
         };
 
-    std::map<std::string, std::string> source{};
-
-    for (const auto& pair : pt.get_child("dictionary.source")) {
-        source[pair.first] = pair.second.get_value<std::string>();
-    }
+    std::string source;
+    if(pt.get_optional<std::string>("dictionary.source"))
+        source = pt.get<std::string>("dictionary.source");
+    else
+        return DictionaryDeserializationResult{
+            ActionState::ParseFailed,
+            Dictionary{}
+        };
 
 
     return DictionaryDeserializationResult{
         ActionState::Done,
         Dictionary{
-            pt.get<std::string>("dictionary.name"),
+            name,
             id,
             source
         }
     };
 
+
+}
+
+bool XmlWorker::isValidXml(std::string_view path)
+{
+    try {
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_xml(std::string(path), pt);
+        return true;
+    } catch (const boost::property_tree::xml_parser_error&) {
+        return false;
+    }
 
 }
 

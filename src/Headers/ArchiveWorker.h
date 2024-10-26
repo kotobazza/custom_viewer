@@ -26,7 +26,7 @@ public:
     // //TODO: эти методы нужно переписывать с нуля, но технически, считается рабочим вариантом
     // //TODO: можно ли их сделать рекурсивными? 
     static ArchiveReadingResults readArchiveEntries(std::string_view path);
-    static ActionState createNewZipArchive(std::string_view path, std::vector<std::string> entities);
+    static ActionState createNewZipArchive(std::string_view path, std::string folderEntry);
     static ActionState unzipArchive(std::string_view path, std::string pathToExtract=std::filesystem::current_path().string());
 };
 

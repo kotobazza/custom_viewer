@@ -4,14 +4,32 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <stack>
 
 #include <filesystem>
 
 namespace cv
 {
 
-ActionState ArchiveWorker::createNewZipArchive(std::string_view path, std::vector<std::string> entries)
+ActionState ArchiveWorker::createNewZipArchive(std::string_view path, std::string folderEntry)
 {
+    std::vector<std::string> entries;
+    std::stack<std::filesystem::path> dirStack;
+    dirStack.push(folderEntry);
+
+    while (!dirStack.empty()) {
+        std::filesystem::path currentDir = dirStack.top();
+        dirStack.pop();
+
+        for (const auto& entry : std::filesystem::directory_iterator(currentDir)) {
+            if (std::filesystem::is_directory(entry)) {
+                dirStack.push(entry);
+            } else {
+                entries.push_back(entry.path().string());
+            }
+        }
+    }
+
   struct archive* a = archive_write_new();
     if (archive_write_set_format_zip(a) != ARCHIVE_OK) {
         std::cerr << "Failed to set archive format to ZIP" << std::endl;

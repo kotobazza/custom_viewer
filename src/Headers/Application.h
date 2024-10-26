@@ -19,7 +19,13 @@
 
 class Application{
 private:
-    std::vector<std::string> tabValues{"Disk Usage", "Filesystem", "Dictionary"};
+    std::vector<std::string> tabValues{"Disk Usage", "Filesystem", "Dictionary", "Archive"};
+    std::string startCurrentPath{std::filesystem::current_path().string()}; 
+    std::string usingPath{std::filesystem::current_path().string()};
+    std::string openedFilePath{};
+
+
+
     bool modalSureToDelete{false};
     bool modalSureToWrite{false};
     bool modalSureToUnzip{false};
@@ -33,14 +39,16 @@ private:
     int filesystemMenuSelected{0};
 
     std::string commandExecutionString{};
+    
 
     bool isPathFile{false};
     bool isPathArchive{false};
+    bool isPathDictionary{false};
     
     std::string plainTextPlaceholder{"Open some text file..."};
 
-    std::string usingPath{std::filesystem::current_path().string()};
-    std::string openedFilePath{};
+    
+    
 
 
     //* InputStringsmainPathInputVal
@@ -63,8 +71,6 @@ private:
     
     
 
-    
-    
 
 
     //* DiskUsagePannels
@@ -79,6 +85,15 @@ private:
     ftxui::Component filesystemRightPannel;
     ftxui::Component filesystemDownPannel;
     std::string plainTextString{};
+    
+
+
+
+
+
+
+
+
 
 
     //* DictionaryPannels
@@ -86,6 +101,41 @@ private:
     ftxui::Component dictionaryLeftPannel;
     ftxui::Component dictionaryRightPannel;
     ftxui::Component dictionaryDownPannel;
+    std::string dictionaryPathInputVal{};
+    std::string dictionaryCommandExecutionString{};
+    std::string dictionaryNameInputVal{};
+    std::string dictionaryIdInputVal{""};
+    std::string dictionaryContentInputVal{};
+    bool modalSureToSerializeIntoJson{false};
+    bool modalSureToSerializeIntoXml{false};
+
+
+    //* ArchiveCreationPannels
+    ftxui::Component archiveContainer;
+    ftxui::Component archiveLeftPannel;
+    ftxui::Component archiveRightPannel;
+    ftxui::Component archiveDownPannel;
+    std::string archivePathInputVal{};
+    std::string archiveCommandExecutionString{};
+    bool modalSureToSaveArchive{false};
+    std::string archiveCreatingPath{};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     //* File_ Containers Down Pannel
@@ -102,7 +152,7 @@ private:
 
     void createFilesystemContainer(std::string path);
     void createDictionaryContainer(std::string path);
-
+    void createArchiveContainer(std::string path);
 
     void openPath(std::string path);
     void openParentPath(std::string path);
@@ -110,6 +160,14 @@ private:
     void clearPlainText();
     void saveFileText();
     void unzipArchive();
+    void zipArchive();
+    void saveIntoJson();
+    void saveIntoXml();
+
+    void openDirectory(std::string path);
+    void showArchive(std::string path);
+    void showFile(std::string text, std::string path);
+    void showStructuredFile(std::string structed_text, std::string path);
     
 
     std::function<void()> exitorClosure;

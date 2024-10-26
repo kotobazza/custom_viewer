@@ -20,64 +20,24 @@ void Dictionary::setDictionaryName(std::string_view newName)
     dictionaryName = std::string(newName);
 }
 
-
-void Dictionary::addNewEntry(std::string name, std::string content)
+std::string Dictionary::getDictionaryContent()
 {
-    if(source.find(name) != source.end())
-        return;
-
-    source[name]=content;
+    return dictionaryText;
 }
 
-bool Dictionary::setNewEntryContent(std::string_view entryName, std::string content)
+void Dictionary::setDictionaryContent(std::string_view content)
 {
-    if(source.find(std::string(entryName)) == source.end())
-        return false;
-
-    source[std::string(entryName)] = content;
-    return true;
-
+    dictionaryText = std::string(content);
 }
 
-
-bool Dictionary::removeEntry(std::string_view entryName)
-{
-    if(source.erase(std::string(entryName))>0)
-    {
-        return true;
-    }
-    return false;
-}
-
-
-std::vector<std::string> Dictionary::listEntries()
-{
-    std::vector<std::string> res{};
-    for(auto const& ent: source)
-        res.push_back(ent.first);
-
-    return res;
-}
-
-std::string Dictionary::getDictionaryEntryContent(std::string name)
-{
-    if(source.find(name) == source.end())
-        return {};
-    return source[name];
-}
 
 
 boost::property_tree::ptree Dictionary::serialize()
-    {
-        boost::property_tree::ptree pt{};
-        pt.put("dictionary.name", dictionaryName);
-        pt.put("dictionary.dictionary_id", dictionaryId);
+{
+    boost::property_tree::ptree pt{};
+    pt.put("dictionary.name", dictionaryName);
+    pt.put("dictionary.dictionary_id", dictionaryId);
+    pt.put("dictionary.source", dictionaryText);
 
-
-        for(auto const&[name, content] : source)
-        {
-            pt.put("dictionary.source."+name, content);
-        }
-
-        return pt;
-    }
+    return pt;
+}
