@@ -2,7 +2,10 @@
 #   git config --global http.postBuffer 157286400
 
 
-cmake_minimum_required (VERSION 3.30)
+cmake_minimum_required (VERSION 3.20)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 project(custom-viewer LANGUAGES CXX VERSION 1.0.0)
 add_executable(custom-viewer src/main.cpp)
