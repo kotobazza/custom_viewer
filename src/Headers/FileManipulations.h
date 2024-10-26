@@ -40,18 +40,16 @@ enum ActionState{
     Failed,
     ArchiveZipTypeNotSet,
     XmlFailed,
-    JsonFailed
+    JsonFailed,
+    ParseFailed,
+    StructFailed
 };
 
 
 class FileManipulation
 {
-
-
-private:
-    static std::string clearNonRelativePath(std::string_view path);//
-
 public:
+    static std::string clearNonRelativePath(std::string_view path);//
     static bool createNewFile(std::string_view path);//
     static bool createNewDirectory(std::string_view path);//
 
