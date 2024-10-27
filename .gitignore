@@ -3,3 +3,4 @@ test/
 .cache
 .vscode
 CMakeLists.txt.user
+.autosave
