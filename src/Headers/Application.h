@@ -26,6 +26,7 @@ private:
 
 
 
+
     bool modalSureToDelete{false};
     bool modalSureToWrite{false};
     bool modalSureToUnzip{false};
@@ -63,11 +64,13 @@ private:
     //* MainComponents
     ftxui::Component tabToggle;
     ftxui::Component tabContainer;
+    ftxui::Component filesystemMenu;
     ftxui::Component mainContainer;
+
 
     //*Tabs
     
-    ftxui::Component filesystemMenu;
+
     
     
 
@@ -168,6 +171,11 @@ private:
     void showArchive(std::string path);
     void showFile(std::string text, std::string path);
     void showStructuredFile(std::string structed_text, std::string path);
+
+
+
+    void createFilesystemMenu();
+    void echoByAll(std::string text);
     
 
     std::function<void()> exitorClosure;

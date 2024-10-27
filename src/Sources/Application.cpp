@@ -21,11 +21,8 @@
 #include <cstdint>
 #include <sstream>
 
-ftxui::Component CText(std::string text) {
-  return ftxui::Renderer([text] {  //
-    return ftxui::text(text) | ftxui::underlinedDouble;
-  });
-}
+using namespace ftxui;
+
 
 
 void Application::createDiskUsageTable()
@@ -243,7 +240,10 @@ void Application::saveFileText()
 void Application::moveFileMenuToPath(std::string path)
 {
     dirEntries.clear();
-    dirEntries = cv::FileManipulation::getDirectoryEntries(path);
+    dirEntries = std::vector<std::string>{};
+    auto dirContainig = cv::FileManipulation::getDirectoryEntries(path);
+    std::copy(dirContainig.begin(), dirContainig.end(), std::back_inserter(dirEntries));
+
     usingPath = path;
     openedFilePath = "";
     clearPlainText();
@@ -259,7 +259,6 @@ void Application::clearPlainText()
 
 void Application::openParentPath(std::string path)
 {
-
     moveFileMenuToPath(path);
     clearPlainText();
     commandExecutionString="Opened folder: "+ std::filesystem::path(path).parent_path().string();
@@ -298,61 +297,11 @@ void Application::createFilesystemContainer(std::string path)
     using namespace ftxui;
     dirEntries = cv::FileManipulation::getDirectoryEntries(path);
 
-    filesystemMenu = Menu(&dirEntries, &filesystemMenuSelected);
-        
-    filesystemMenu |= CatchEvent([&](Event event){
-            bool ret = (Event::Character("\n")==event | Event::ArrowRight==event);
-            if(ret)
-            {
-                std::string selectedPath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                openPath(selectedPath);
-                
-            }
 
-            return ret;
-        });
-
-    filesystemMenu |= CatchEvent([&](Event event){
-            bool ret = (Event::ArrowLeft==event);
-            if(ret)
-            {
-                if(usingPath!=startCurrentPath)
-                    openParentPath(std::filesystem::path(usingPath).parent_path().string());
-                else{
-                    dictionaryCommandExecutionString="Can't open higher hierarchy folder...";
-                    commandExecutionString="Can't open higher hierarchy folder...";
-                }
-                
-            }
-            return ret;
-        }); 
-
-    filesystemMenu|= CatchEvent([&](Event event){
-            bool ret = (Event::Delete == event);
-            if(ret) 
-            {
-                if(cv::FileManipulation::isExistingPath(usingPath + "/" + dirEntries[filesystemMenuSelected])){
-                    openedFilePath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                    modalSureToDelete=true;
-                }
-
-            }
-            return ret;
-        });
 
     commandExecutionString="Open some file...";
 
-    
-    filesystemLeftPannel = Container::Vertical({
-        Renderer([&]{
-            return text("#>"+startCurrentPath)|underlined|bold|bgcolor(Color::YellowLight);
-        }),
-        Renderer([&]{
-            return text("|>"+usingPath)|underlined|bold|bgcolor(Color::GreenLight);
-        }),
-        Renderer([&]{return separator();}),
-        filesystemMenu
-    });
+
 
     filesystemDownPannel = Container::Horizontal({
         Input(&mainPathInputVal, "/") | borderRounded | flex,
@@ -423,10 +372,10 @@ void Application::createFilesystemContainer(std::string path)
         filesystemDownPannel
     });
 
-    filesystemLeftPannel = ResizableSplitLeft(filesystemLeftPannel, filesystemRightPannel, &leftPannelSizeModifier);
+
 
     filesystemUsageContainer = Container::Vertical({
-        filesystemLeftPannel
+        filesystemRightPannel
     });
 
     
@@ -468,7 +417,6 @@ void Application::saveIntoXml()
 
 void Application::createDictionaryContainer(std::string path)
 {
-    using namespace ftxui;
     dictionaryCommandExecutionString = "Open some XML or JSON file...";
     dictionaryDownPannel = Container::Horizontal({
         Container::Horizontal({
@@ -537,55 +485,7 @@ void Application::createDictionaryContainer(std::string path)
             })
         })
     });
-    dirEntries = cv::FileManipulation::getDirectoryEntries(path);
-    
-    dictionaryLeftPannel = Container::Vertical({
-        Renderer([&]{
-            return text("#>"+startCurrentPath)|underlined|bold|bgcolor(Color::YellowLight);
-        }),
-        Renderer([&]{
-            return text("/>"+usingPath)|underlined|bold|bgcolor(Color::GreenLight);
-        }),
-        Renderer([&]{return separator();}),
-        Menu(&dirEntries, &filesystemMenuSelected)
-        | CatchEvent([&](Event event){
-            bool ret = (Event::Character("\n")==event | Event::ArrowRight==event);
-            if(ret)
-            {
-                std::string selectedPath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                openPath(selectedPath);
-                
-            }
 
-            return ret;
-        })
-        | CatchEvent([&](Event event){
-            bool ret = (Event::ArrowLeft==event);
-            if(ret)
-            {
-                if(usingPath!=startCurrentPath)
-                    openParentPath(std::filesystem::path(usingPath).parent_path().string());
-                else{
-                    dictionaryCommandExecutionString="Can't open higher hierarchy folder...";
-                    commandExecutionString="Can't open higher hierarchy folder...";
-                }
-            }
-            return ret;
-        }) 
-        | CatchEvent([&](Event event){
-            bool ret = (Event::Delete == event);
-        
-            if(ret) 
-            {
-                if(cv::FileManipulation::isExistingPath(usingPath + "/" + dirEntries[filesystemMenuSelected])){
-                    openedFilePath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                    modalSureToDelete=true;
-                }
-
-            }
-            return ret;
-        }),
-    });
 
     dictionaryRightPannel = Container::Vertical({
         Container::Vertical({
@@ -632,10 +532,8 @@ void Application::createDictionaryContainer(std::string path)
         dictionaryDownPannel
     });
 
-    dictionaryLeftPannel = ResizableSplitLeft(dictionaryLeftPannel, dictionaryRightPannel, &leftPannelSizeModifier);
-
     dictionaryUsageContainer = Container::Vertical({
-        dictionaryLeftPannel
+        dictionaryRightPannel
         
     });
 }
@@ -646,57 +544,9 @@ void Application::createDictionaryContainer(std::string path)
 
 void Application::createArchiveContainer(std::string path)
 {
-    using namespace ftxui;
+
     dirEntries = cv::FileManipulation::getDirectoryEntries(path);
     archiveCommandExecutionString = "<Ctrl+A> to create a zip archive from selected folder...";
-
-
-
-
-
-    auto archiveFileMenu=Menu(&dirEntries, &filesystemMenuSelected)
-        | CatchEvent([&](Event event){
-            bool ret = (Event::Character("\n")==event | Event::ArrowRight==event);
-            if(ret)
-            {
-                std::string selectedPath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                openPath(selectedPath);
-                
-            }
-            return ret;
-        });
-
-    archiveFileMenu |=  CatchEvent([&](Event event){
-            bool ret = (Event::ArrowLeft==event);
-            if(ret)
-            {
-                if(usingPath!=startCurrentPath)
-                    openParentPath(std::filesystem::path(usingPath).parent_path().string());
-                else{
-                    dictionaryCommandExecutionString="Can't open higher hierarchy folder...";
-                    archiveCommandExecutionString="Can't open higher hierarchy folder...";
-                    commandExecutionString="Can't open higher hierarchy folder...";
-                }
-            }
-            return ret;
-        }) ;
-
-    archiveFileMenu |=  CatchEvent([&](Event event){
-            bool ret = (Event::CtrlA==event);
-            if(ret)
-            {
-                if(cv::FileManipulation::isDirectory(usingPath+"/"+dirEntries[filesystemMenuSelected]))
-                {
-                    archiveCreatingPath = usingPath+"/"+dirEntries[filesystemMenuSelected];
-                    modalSureToSaveArchive=true;
-                }
-                else
-                {
-                    archiveCommandExecutionString="Select a folder instead of file... ";
-                }
-            }
-            return ret;
-        }); 
 
     archiveLeftPannel = Container::Vertical({
         Renderer([&]{
@@ -706,7 +556,6 @@ void Application::createArchiveContainer(std::string path)
             return text("/>"+usingPath)|underlined|bold|bgcolor(Color::GreenLight);
         }),
         Renderer([&]{return separator();}),
-        archiveFileMenu
     });
 
 
@@ -722,19 +571,96 @@ void Application::createArchiveContainer(std::string path)
         archiveDownPannel
     });
 
-    archiveLeftPannel = ResizableSplitLeft(archiveLeftPannel, archiveRightPannel, &leftPannelSizeModifier);
 
     archiveContainer = Container::Vertical({
-        archiveLeftPannel
+        archiveRightPannel
         
     });
 
 
+}
 
 
+void Application::echoByAll(std::string text)
+{
+    dictionaryCommandExecutionString = text;
+    archiveCommandExecutionString = text;
+    commandExecutionString = text;
+}
+
+
+
+
+void Application::createFilesystemMenu()
+{
+    dirEntries = cv::FileManipulation::getDirectoryEntries(usingPath);
+
+    filesystemMenu = Container::Vertical({
+        Renderer([&]{
+            return text("#>"+startCurrentPath)|underlined|bold|bgcolor(Color::YellowLight)|color(Color::GrayDark);
+        }),
+
+        Renderer([&]{
+            return text("/>"+usingPath)|underlined|bold|bgcolor(Color::GreenLight)|color(Color::GrayDark);
+        }),
+
+        Renderer([&]{return separator();}),
+
+        Menu({&dirEntries, &filesystemMenuSelected})
+            | CatchEvent([&](Event event){
+                  bool ret = (Event::Character("\n")==event | Event::ArrowRight==event);
+                  if(ret)
+                  {
+                      std::string selectedPath = usingPath+'/'+dirEntries[filesystemMenuSelected];
+                      openPath(selectedPath);
+
+                  }
+                  return ret;
+              })
+            | CatchEvent([&](Event event){
+                  bool ret = (Event::ArrowLeft==event);
+                  if(ret)
+                  {
+                      if(usingPath!=startCurrentPath)
+                          openParentPath(std::filesystem::path(usingPath).parent_path().string());
+                      else{
+                          echoByAll("Can't open higher hierarchy folder...");
+                      }
+                  }
+                  return ret;
+              })
+            | CatchEvent([&](Event event){
+                  bool ret = (Event::Delete == event);
+
+                  if(ret)
+                  {
+                      openedFilePath = usingPath+'/'+dirEntries[filesystemMenuSelected];
+                      modalSureToDelete=true;
+
+                  }
+                  return ret;
+              })
+            | CatchEvent([&](Event event){
+                  bool ret = (Event::CtrlA==event);
+                  if(ret)
+                  {
+                      if(cv::FileManipulation::isDirectory(usingPath+"/"+dirEntries[filesystemMenuSelected]))
+                      {
+                          archiveCreatingPath = usingPath+"/"+dirEntries[filesystemMenuSelected];
+                          modalSureToSaveArchive=true;
+                      }
+                      else
+                      {
+                          echoByAll("<Ctrl+A> pressed. Select a folder before pressing <Ctrl+A>");
+                      }
+                  }
+                  return ret;
+              })
+    }) | border;
 
 
 }
+
 
 
 
@@ -745,6 +671,8 @@ Application::Application(std::function<void()>exitor)
     exitorClosure=exitor;
 
     tabToggle = Toggle(&tabValues, &tabSelected) | borderRounded;
+
+    createFilesystemMenu();
 
 
     createDiskUsageTable();
@@ -770,14 +698,19 @@ Application::Application(std::function<void()>exitor)
     }, &tabSelected);
 
 
-    mainContainer = Container::Vertical({
-        Container::Horizontal({
-            tabToggle|flex,
-            Button("X", [&]{
-                exitorClosure();
-            }) | bold
-        }),
-        tabContainer
+
+
+    mainContainer = Container::Horizontal({
+        filesystemMenu,
+        Container::Vertical({
+            Container::Horizontal({
+                tabToggle|flex,
+                Button("X", [&]{
+                    exitorClosure();
+                    }) | bold
+                }),
+            tabContainer
+        })
     })
     | Modal(Container::Vertical({
         Renderer([&]{
