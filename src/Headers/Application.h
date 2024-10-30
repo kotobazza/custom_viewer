@@ -20,7 +20,7 @@
 class Application{
 private:
     std::vector<std::string> tabValues{"Disk Usage", "Filesystem", "Dictionary", "Archive"};
-    std::string startCurrentPath{std::filesystem::current_path().string()}; 
+    std::string starterPath{std::filesystem::current_path().string()};
     std::string usingPath{std::filesystem::current_path().string()};
     std::string openedFilePath{};
 
@@ -105,7 +105,6 @@ private:
     ftxui::Component dictionaryRightPannel;
     ftxui::Component dictionaryDownPannel;
     std::string dictionaryPathInputVal{};
-    std::string dictionaryCommandExecutionString{};
     std::string dictionaryNameInputVal{};
     std::string dictionaryIdInputVal{""};
     std::string dictionaryContentInputVal{};
@@ -119,7 +118,6 @@ private:
     ftxui::Component archiveRightPannel;
     ftxui::Component archiveDownPannel;
     std::string archivePathInputVal{};
-    std::string archiveCommandExecutionString{};
     bool modalSureToSaveArchive{false};
     std::string archiveCreatingPath{};
 
@@ -175,7 +173,7 @@ private:
 
 
     void createFilesystemMenu();
-    void echoByAll(std::string text);
+    void echoCommand(std::string text);
     
 
     std::function<void()> exitorClosure;

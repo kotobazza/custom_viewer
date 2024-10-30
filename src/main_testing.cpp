@@ -1,121 +1,192 @@
+// Copyright 2020 Arthur Sonzogni. All rights reserved.
+// Use of this source code is governed by the MIT license that can be found in
+// the LICENSE file.
+#include <stddef.h>  // for size_t
+#include <memory>    // for shared_ptr, __shared_ptr_access, allocator
+#include <string>  // for string, basic_string, to_string, operator+, char_traits
+#include <vector>  // for vector
 
+#include "ftxui/component/captured_mouse.hpp"  // for ftxui
+#include "ftxui/component/component.hpp"  // for Radiobox, Vertical, Checkbox, Horizontal, Renderer, ResizableSplitBottom, ResizableSplitRight
+#include "ftxui/component/component_base.hpp"      // for ComponentBase
+#include "ftxui/component/screen_interactive.hpp"  // for ScreenInteractive
+#include "ftxui/dom/elements.hpp"  // for text, window, operator|, vbox, hbox, Element, flexbox, bgcolor, filler, flex, size, border, hcenter, color, EQUAL, bold, dim, notflex, xflex_grow, yflex_grow, HEIGHT, WIDTH
+#include "ftxui/dom/flexbox_config.hpp"  // for FlexboxConfig, FlexboxConfig::AlignContent, FlexboxConfig::JustifyContent, FlexboxConfig::AlignContent::Center, FlexboxConfig::AlignItems, FlexboxConfig::Direction, FlexboxConfig::JustifyContent::Center, FlexboxConfig::Wrap
+#include "ftxui/screen/color.hpp"        // for Color, Color::Black
 
-#include <iostream>
-// #include <array>       // for array
-// #include <chrono>      // for milliseconds
-// #include <functional>  // for function
-// #include <memory>      // for __shared_ptr_access, shared_ptr, allocator
-// #include <string>      // for string, char_traits, operator+, basic_string
-// #include <vector>      // for vector
+using namespace ftxui;
 
-#include "ArchiveWorker.h"
-#include "DiskInfo.h"
-#include "FileManipulations.h"
-#include "Headers/ArchiveWorker.h"
-#include "Headers/FileManipulations.h"
-#include "Headers/JsonWorker.h"
-#include "Headers/Serializable.h"
-#include "Headers/XmlWorker.h"
-#include "JsonWorker.h"
-#include "Serializable.h"
-#include "TextWorker.h"
-#include "XmlWorker.h"
+int main() {
+    auto screen = ScreenInteractive::Fullscreen();
 
-int main()
-{
-    using namespace std::string_literals;
+    int direction_index = 0;
+    int wrap_index = 0;
+    int justify_content_index = 0;
+    int align_items_index = 0;
+    int align_content_index = 0;
 
-    std::cout << "Hello World!" << std::endl;
-    //diskInfo.printFilesystemInfo();
+    std::vector<std::string> directions = {
+        "Row",
+        "RowInversed",
+        "Column",
+        "ColumnInversed",
+    };
 
-    // for(cv::DiskInfoRecord a: cv::DiskInfo::getMountedPoints())
-    // {
-    //     std::cout << "Filesystem Device: " << a.deviceName << "\n";
-    //     std::cout << a.fileSystem << "\n";
-    //     std::cout << a.mountPoint << "\n";
-    //     std::cout << "\n";
-    // }
+    std::vector<std::string> wraps = {
+        "NoWrap",
+        "Wrap",
+        "WrapInversed",
+    };
 
-    //* Создание директории
-    cv::FileManipulation::createNewDirectory("let/a");
+    std::vector<std::string> justify_content = {
+        "FlexStart",    "FlexEnd",     "Center",      "Stretch",
+        "SpaceBetween", "SpaceAround", "SpaceEvenly",
+    };
 
-    //* Создание файла
-    cv::FileManipulation::createNewFile("let/a/test.txt");
+    std::vector<std::string> align_items = {
+        "FlexStart",
+        "FlexEnd",
+        "Center",
+        "Stretch",
+    };
 
-    //* Создание файла V2
-    cv::FileManipulation::createNewFile("let/b/test.txt");
+    std::vector<std::string> align_content = {
+        "FlexStart",    "FlexEnd",     "Center",      "Stretch",
+        "SpaceBetween", "SpaceAround", "SpaceEvenly",
+    };
 
-    //* Использование ненормированного пути
-    cv::FileManipulation::createNewDirectory("../../../let/test");
+    auto radiobox_direction = Radiobox(&directions, &direction_index);
+    auto radiobox_wrap = Radiobox(&wraps, &wrap_index);
+    auto radiobox_justify_content =
+        Radiobox(&justify_content, &justify_content_index);
+    auto radiobox_align_items = Radiobox(&align_items, &align_items_index);
+    auto radiobox_align_content = Radiobox(&align_content, &align_content_index);
 
-    //* Удаление директории
-    cv::FileManipulation::createNewDirectory("let/c");
-    cv::FileManipulation::deletePath("let/c");
+    bool element_xflex_grow = false;
+    bool element_yflex_grow = false;
+    bool group_xflex_grow = true;
+    bool group_yflex_grow = true;
 
-    //* Удаление файла
-    cv::FileManipulation::deletePath("let/b/test.txt");
+    auto checkbox_element_xflex_grow =
+        Checkbox("element |= xflex_grow", &element_xflex_grow);
+    auto checkbox_element_yflex_grow =
+        Checkbox("element |= yflex_grow", &element_yflex_grow);
+    auto checkbox_group_xflex_grow =
+        Checkbox("group |= xflex_grow", &group_xflex_grow);
+    auto checkbox_group_yflex_grow =
+        Checkbox("group |= yflex_grow", &group_yflex_grow);
 
-    //* Тестирование TextWorker
+    auto make_box = [&](size_t dimx, size_t dimy, size_t index) {
+        std::string title = std::to_string(dimx) + "x" + std::to_string(dimy);
+        auto element = window(text(title) | hcenter | bold,
+                              text(std::to_string(index)) | hcenter | dim) |
+                       size(WIDTH, EQUAL, dimx) | size(HEIGHT, EQUAL, dimy) |
+                       bgcolor(Color::HSV(index * 25, 255, 255)) |
+                       color(Color::Black);
+        if (element_xflex_grow)
+            element = element | xflex_grow;
+        if (element_yflex_grow)
+            element = element | yflex_grow;
+        return element;
+    };
 
-    //* Заполнение файла
-    cv::FileManipulation::createNewFile("let/c/test.txt");
-    cv::TextWorker::writeIntoFile("let/c/test.txt", "Hello World! Test 1\n");
+    auto content_renderer = Renderer([&] {
+        FlexboxConfig config;
+        config.direction = static_cast<FlexboxConfig::Direction>(direction_index);
+        config.wrap = static_cast<FlexboxConfig::Wrap>(wrap_index);
+        config.justify_content =
+            static_cast<FlexboxConfig::JustifyContent>(justify_content_index);
+        config.align_items =
+            static_cast<FlexboxConfig::AlignItems>(align_items_index);
+        config.align_content =
+            static_cast<FlexboxConfig::AlignContent>(align_content_index);
 
-    //* Чтение из файла
-    cv::ReadFileOutput out{cv::TextWorker::readFromFile("let/c/test.txt")};
-    std::cout << "Test 1: Text from file: \n" << out.content << "\n";
+        auto group = flexbox(
+            {
+                make_box(8, 4, 0),
+                make_box(9, 6, 1),
+                make_box(11, 6, 2),
+                make_box(10, 4, 3),
+                make_box(13, 7, 4),
+                make_box(12, 4, 5),
+                make_box(12, 5, 6),
+                make_box(10, 4, 7),
+                make_box(12, 4, 8),
+                make_box(10, 5, 9),
+            },
+            config);
 
-    //* Тест добавления текста
-    cv::TextWorker::appendIntoFile("let/c/test.txt", "Test 2\n");
-    out = cv::TextWorker::readFromFile("let/c/test.txt");
-    std::cout << "Test 2: Text from file: \n" << out.content << "\n";
+        group = group | bgcolor(Color::Black);
 
-    //* Работа с сериализуемой сущностью
-    Dictionary t{};
-    t.setDictionaryName("Hello1");
-    t.setDictionaryId(1);
-    t.setDictionaryContent("Hello World!");
+        group = group | notflex;
 
-    std::cout << t.getDictionaryContent();
+        if (!group_xflex_grow)
+            group = hbox(group, filler());
+        if (!group_yflex_grow)
+            group = vbox(group, filler());
 
-    //* Сериализация сущности в XML и JSON
-    cv::FileManipulation::createNewFile("let/d/dictionary.json");
-    cv::FileManipulation::createNewFile("let/d/dictionary.xml");
-    cv::TextWorker::writeIntoFile("let/d/dictionary.json", cv::JsonWorker::serializeDictionary(t));
-    cv::TextWorker::writeIntoFile("let/d/dictionary.xml", cv::XmlWorker::serializeDictionary(t));
+        group = group | flex;
+        return group;
+    });
 
-    // //* Десериализация сущности из XML и JSON
-    cv::DictionaryDeserializationResult res1 = cv::JsonWorker::deserializeDictionary(
-        "let/d/dictionary.json");
-    if (res1.state == cv::ActionState::Done)
-        std::cout << "YAY\n";
+    auto center = FlexboxConfig()
+                      .Set(FlexboxConfig::JustifyContent::Center)
+                      .Set(FlexboxConfig::AlignContent::Center);
+    int space_right = 10;
+    int space_bottom = 1;
+    content_renderer = ResizableSplitRight(
+        Renderer([&] { return flexbox({text("resizable")}, center); }),
+        content_renderer, &space_right);
+    content_renderer = ResizableSplitBottom(
+        Renderer([&] { return flexbox({text("resizable")}, center); }),
+        content_renderer, &space_bottom);
 
-    cv::DictionaryDeserializationResult res2 = cv::XmlWorker::deserializeDictionary(
-        "let/d/dictionary.xml");
-    if (res2.state == cv::ActionState::Done)
-        std::cout << "YAY\n";
+    auto main_container = Container::Vertical({
+        Container::Horizontal({
+            radiobox_direction,
+            radiobox_wrap,
+            Container::Vertical({
+                checkbox_element_xflex_grow,
+                checkbox_element_yflex_grow,
+                checkbox_group_xflex_grow,
+                checkbox_group_yflex_grow,
+            }),
+        }),
+        Container::Horizontal({
+            radiobox_justify_content,
+            radiobox_align_items,
+            radiobox_align_content,
+        }),
+        content_renderer,
+    });
 
-    //* Ошибка десериализации
-    //TODO: неправильное API. Json/XML Workers should use TextWorker for getting content of the files, instead usign read_json(std::string path)
-    // cv::DictionaryDeserializationResult res3 = cv::JsonWorker::deserializeDictionary("any/dictionary_failed.txt");
-    // if(res3.state == cv::ActionState::JsonFailed){
-    //     std::cout<<"YAY\n";
-    // }
+    auto main_renderer = Renderer(main_container, [&] {
+        return vbox({
+            vbox({hbox({
+                      window(text("FlexboxConfig::Direction"),
+                             radiobox_direction->Render()),
+                      window(text("FlexboxConfig::Wrap"), radiobox_wrap->Render()),
+                      window(text("Misc:"),
+                             vbox({
+                                 checkbox_element_xflex_grow->Render(),
+                                 checkbox_element_yflex_grow->Render(),
+                                 checkbox_group_xflex_grow->Render(),
+                                 checkbox_group_yflex_grow->Render(),
+                             })),
+                  }),
+                  hbox({
+                      window(text("FlexboxConfig::JustifyContent"),
+                             radiobox_justify_content->Render()),
+                      window(text("FlexboxConfig::AlignItems"),
+                             radiobox_align_items->Render()),
+                      window(text("FlexboxConfig::AlignContent"),
+                             radiobox_align_content->Render()),
+                  })}),
+            content_renderer->Render() | flex | border,
+        });
+    });
 
-    // cv::DictionaryDeserializationResult res4 = cv::XmlWorker::deserializeDictionary("any/dictionary_failed.xml");
-    // if(res4.state == cv::ActionState::XmlFailed){
-    //     std::cout<<"YAY\n";
-    // }
+    screen.Loop(main_renderer);
 
-    // //* Работа с архивами
-
-    // cv::ArchiveWorker::createNewZipArchive("file.zip", {"file.txt"s, "file2.txt"s});
-    // cv::ArchiveReadingResults res = cv::ArchiveWorker::readArchiveEntries("file.zip");
-
-    // for(const auto& file : res.entries)
-    // {
-    //     std::cout<<file<<"\n";
-    // }
-
-    // cv::ArchiveWorker::unzipArchive("file.zip");
+    return 0;
 }

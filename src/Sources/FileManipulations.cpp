@@ -12,7 +12,7 @@ bool FileManipulation::createNewFile(std::string_view path)
     std::filesystem::path relativePath{FileManipulation::clearNonRelativePath(path)};
 
     //относительные пути?
-    if(isExistingPath(relativePath.u8string()))
+    if(isExistingPath(relativePath.string()))
         return false;
     std::filesystem::create_directories(std::filesystem::current_path() / relativePath.parent_path());  
     std::ofstream fout {std::filesystem::current_path() / relativePath};
