@@ -254,6 +254,7 @@ void Application::clearPlainText()
 {
     plainTextString = "";
     isPathFile = false;
+    isPathDictionary = false;
     isPathArchive = false;
 }
 
@@ -293,7 +294,6 @@ void Application::zipArchive()
 void Application::createFilesystemContainer(std::string path)
 {
 
-    using namespace ftxui;
     dirEntries = cv::FileManipulation::getDirectoryEntries(path);
 
     filesystemDownPannel = Container::Horizontal({
@@ -360,7 +360,7 @@ void Application::createFilesystemContainer(std::string path)
         Input(&plainTextString)|borderEmpty,
         Renderer([]{return filler();}),
         Renderer([&]{
-            return text(commandExecutionString) | underlined | bgcolor(Color::GrayLight);
+            return text(commandExecutionString) | underlined | bgcolor(Color::GrayLight)|bold|color(Color::Black);
         }),
         filesystemDownPannel
     });
@@ -520,7 +520,7 @@ void Application::createDictionaryContainer(std::string path)
             return filler();
         }),
         Renderer([&]{
-            return text(commandExecutionString) | underlined | bgcolor(Color::GrayLight);
+            return text(commandExecutionString) | underlined | bgcolor(Color::GrayLight)|bold|color(Color::Black);
         }),
         dictionaryDownPannel
     });
@@ -557,7 +557,7 @@ void Application::createArchiveContainer(std::string path)
     archiveRightPannel = Container::Vertical({
         Container::Vertical({
             Renderer([&]{
-                return text(commandExecutionString) |underlined|bold|bgcolor(Color::GrayLight);
+                return text(commandExecutionString) |underlined|bold|bgcolor(Color::GrayLight)|bold|color(Color::Black);
             })
         }),
         archiveDownPannel
@@ -608,7 +608,7 @@ void Application::createFilesystemMenu()
                   if(ret)
                   {
                       if(usingPath!=starterPath)
-                          openParentPath(std::filesystem::path(usingPath).parent_path().string());
+                          openPath(cv::FileManipulation::getParentPath(usingPath));
                       else{
                           echoCommand("Can't open higher hierarchy folder...");
                       }
@@ -654,8 +654,6 @@ Application::Application(std::function<void()>exitor)
 {
     exitorClosure=exitor;
 
-
-
     tabToggle = Toggle(&tabValues, &tabSelected) | borderRounded;
 
     createFilesystemMenu();
@@ -677,11 +675,11 @@ Application::Application(std::function<void()>exitor)
 
 
     tabContainer = Container::Tab({
-                                      diskUsageContainer|border|flex,
-                                      filesystemUsageContainer|border|flex,
-                                      dictionaryUsageContainer|border|flex,
-                                      archiveContainer|border|flex
-                                  }, &tabSelected);
+        diskUsageContainer|border|flex,
+        filesystemUsageContainer|border|flex,
+        dictionaryUsageContainer|border|flex,
+        archiveContainer|border|flex
+    }, &tabSelected);
 
 
     filesystemMenu |= border;
