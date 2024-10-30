@@ -56,6 +56,7 @@ public:
     static bool deletePath(std::string_view path);//
 
     static std::vector<std::string> getDirectoryEntries(std::string_view path);
+    static std::string getParentPath(std::string path);
 
     static bool isExistingPath(std::string_view path);//
     static bool isDirectory(std::string_view path);//

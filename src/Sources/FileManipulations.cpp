@@ -82,6 +82,11 @@ std::vector<std::string> FileManipulation::getDirectoryEntries(std::string_view 
     return contents;
 }
 
+std::string FileManipulation::getParentPath(std::string path)
+{
+    return std::filesystem::path(path).parent_path().string();
+}
+
 
 bool FileManipulation::isArchive(std::string_view path)
 {
