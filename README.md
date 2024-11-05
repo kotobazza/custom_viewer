@@ -17,10 +17,10 @@
 
 
 ## Используемые библиотеки
-+ boost
++ [Boost](https://github.com/boostorg/boost)
     + property-tree
-+ libarchive
-+ ftxui
++ [libarchive](https://github.com/libarchive/libarchive)
++ [FTXUI](https://github.com/ArthurSonzogni/FTXUI)
 
 
 
