@@ -24,15 +24,9 @@ private:
     std::string usingPath{std::filesystem::current_path().string()};
     std::string openedFilePath{};
 
+    std::vector<std::string> tempMenuVals{".."};
+    int a=0;
 
-    /*
-    TODO:
-    Нужно првоести попытку разделения usingPath на currentPath/openedPath
-    + Проблема в том, что такое изменение влечет за собой модификацию логики всей программы
-        + Нужно явно предусмотреть, что openedPath не может быть пустым при каких-либо изменениях в файловой системе
-        + А как поступать с удалением
-
-    */
 
 
 
@@ -57,13 +51,14 @@ private:
     bool isPathDictionary{false};
     
     std::string plainTextPlaceholder{"Open some text file..."};
+    std::string archivePlainText;
 
     
     
 
 
     //* InputStringsmainPathInputVal
-    std::string mainPathInputVal{};
+    std::string pathInputVal{};
 
     //* DirMenuEntries
     std::vector<std::string> dirEntries{};
@@ -114,7 +109,13 @@ private:
     ftxui::Component dictionaryLeftPannel;
     ftxui::Component dictionaryRightPannel;
     ftxui::Component dictionaryDownPannel;
-    std::string dictionaryPathInputVal{};
+
+    ftxui::Component dictionaryIdInput;
+    ftxui::Component dictionaryNameInput;
+    ftxui::Component dictionaryContentInput;
+
+
+
     std::string dictionaryNameInputVal{};
     std::string dictionaryIdInputVal{""};
     std::string dictionaryContentInputVal{};
@@ -122,30 +123,24 @@ private:
     bool modalSureToSerializeIntoXml{false};
 
 
+
+
+
+
+
+
+
+
+    ftxui::Component exitButton{};
+
+
     //* ArchiveCreationPannels
     ftxui::Component archiveContainer;
     ftxui::Component archiveLeftPannel;
     ftxui::Component archiveRightPannel;
     ftxui::Component archiveDownPannel;
-    std::string archivePathInputVal{};
     bool modalSureToSaveArchive{false};
     std::string archiveCreatingPath{};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -161,9 +156,9 @@ private:
 
     void createDiskUsageTable();
 
-    void createFilesystemContainer(std::string path);
-    void createDictionaryContainer(std::string path);
-    void createArchiveContainer(std::string path);
+    void createFilesystemContainer();
+    void createDictionaryContainer();
+    void createArchiveContainer();
 
     void openPath(std::string path);
     void openParentPath(std::string path);
