@@ -1,5 +1,8 @@
 # custom-viewer
 
+![](doc/Screenshot.png)
+
+
 Простая TUI утилита для:
 + просмотра информации о хранилище
 + управления файлами и архивами 
@@ -18,4 +21,8 @@
     + property-tree
 + libarchive
 + ftxui
+
+
+
+
 
