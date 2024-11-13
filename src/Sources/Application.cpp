@@ -162,11 +162,13 @@ void Application::openPath(std::string path)
     if(cv::FileManipulation::isDirectory(path))
     {
         openDirectory(path);
+        tabSelected = std::find(tabValues.begin(), tabValues.end(), "Filesystem") - tabValues.begin();
     }
 
     else if(cv::FileManipulation::isArchive(path))
     {
         showArchive(path);
+        tabSelected = std::find(tabValues.begin(), tabValues.end(), "Archive") - tabValues.begin();
 
     }
     else if(cv::FileManipulation::isFile(path))
@@ -209,15 +211,15 @@ void Application::openPath(std::string path)
                 dictionaryContentInputVal = dict.getDictionaryContent();
                 isPathDictionary=true;
                 openedFilePath = path;
+                tabSelected = std::find(tabValues.begin(), tabValues.end(), "Dictionary") - tabValues.begin();
                 return;
                 
             }
-
             
         }
 
         echoCommand("Opened file:"+std::filesystem::path(path).filename().string());
-        
+        tabSelected = std::find(tabValues.begin(), tabValues.end(), "Filesystem") - tabValues.begin();
 
         plainTextString = output.content;
         if(output.content=="")
@@ -398,7 +400,10 @@ void Application::createFilesystemContainer()
 
     filesystemUsageContainer = Container::Vertical({
         Container::Vertical({
-            Input(&plainTextString)|borderEmpty|flex, //EXPANDABLE
+            Renderer([&]{
+                return text("File")|bold|color(Colors::THEME_COLOR_2)|hcenter;
+            }),
+            Input(&plainTextString)|borderRounded|flex,
             Renderer([&]{
                 return text(commandExecutionString) | underlined | bgcolor(Colors::ALT_BACKGROUND_COLOR)|bold|color(Colors::ALT_FOREGROUND_COLOR);
             }),
@@ -558,8 +563,12 @@ void Application::createArchiveContainer()
 
     archiveContainer = Container::Vertical({
         Container::Vertical({
-        Input(&archivePlainText)|borderEmpty|flex,
-        Renderer([&]{
+            Renderer([&]{
+                return text("Archive")|bold|color(Colors::THEME_COLOR_2)|hcenter;
+            }),
+            Input(&archivePlainText)|borderRounded|flex,
+            
+            Renderer([&]{
                 return text(commandExecutionString) |underlined|bold|bgcolor(Colors::ALT_BACKGROUND_COLOR)|bold|color(Colors::ALT_FOREGROUND_COLOR);
             })
         })|flex,
@@ -656,9 +665,10 @@ Application::Application(std::function<void()>exitor)
 {
     exitorClosure=exitor;
 
-    tabToggle = Toggle(&tabValues, &tabSelected) | borderRounded;
+
 
     createFilesystemMenu();
+
 
 
     createDiskUsageTable();
@@ -671,85 +681,67 @@ Application::Application(std::function<void()>exitor)
 
 
 
-
-    tabContainer = Container::Tab({
-                                      diskUsageContainer|border|flex,
-                                      filesystemUsageContainer|border|flex,
-                                      dictionaryUsageContainer|border|flex,
-                                      archiveContainer|border|flex
-                                  }, &tabSelected);
-
-
-    filesystemMenu |= border;
-    filesystemMenu |=flex;
-
-
-    exitButton = Button(" X ", [&]{exitorClosure();});
-    mainPathInput = Input(&pathInputVal, "/")|border|bold;
-
-    auto mainLayouter = Container::Horizontal({
-        filesystemMenu,
+    mainContainer = Container::Horizontal({
         Container::Vertical({
-            Container::Horizontal({
-                tabToggle,
-                exitButton
-            }),
-            tabContainer,
-            mainPathInput
-        })
-    });
-
-    mainContainer = Renderer(mainLayouter, [&]{
-        return hbox({
-            vbox({
-                filesystemMenu->Render(),
-                vbox({
+            filesystemMenu|border|flex,
+            Renderer([&]{
+                return vbox({
                     text("Help")|bold|center,
                     separator(),
                     hbox({
                         text("Enter")|color(Colors::THEME_COLOR_2)|border,
-                        text("Open folder or file")|vcenter
+                        text(" Open folder or file")|vcenter,
                     }),
                     hbox({
                         text("Ctrl")|color(Colors::THEME_COLOR_2)|border,
                         text("A")|color(Colors::THEME_COLOR_1)|border,
-                        text("Create an archive")|vcenter
+                        text(" Create an archive")|vcenter,
+                    }),
+                    hbox({
+                        text("Delete")|color(Colors::THEME_COLOR_1)|border,
+                        text(" Delete folder or file")|vcenter,
                     })
-                })|border
+                })|border;
             }),
 
-            vbox({
-                hbox({
-                    vbox({
-                        text("  #>"+starterPath)|bold|color(Colors::THEME_COLOR_1),
-                        text("  />"+usingPath)|bold|color(Colors::THEME_COLOR_2),
-                        text("  !>"+openedFilePath)|bold|color(Colors::THEME_COLOR_4),
+        }),
+        Container::Vertical({
+                Container::Horizontal({
+                    Renderer([&]{
+                            return vbox({
+                            text("  #>"+starterPath)|bold|color(Colors::THEME_COLOR_1),
+                            text("  />"+usingPath)|bold|color(Colors::THEME_COLOR_2),
+                            text("  !>"+openedFilePath)|bold|color(Colors::THEME_COLOR_4),
+                            
+                        });
                     }),
-                    filler(),
-                    tabToggle->Render(),
-                    exitButton->Render(),
+                    Renderer([&]{return filler();}),
+                    Toggle(&tabValues, &tabSelected) | borderRounded,
+                    Button(" X ", [&]{exitorClosure();}),
+
                 }),
-                tabContainer->Render(),
-                mainPathInput->Render(),
-            })|flex,
-        });
-    })
+                Container::Tab({
+                    diskUsageContainer|flex,
+                    filesystemUsageContainer|flex,
+                    dictionaryUsageContainer|flex,
+                    archiveContainer|flex
+                }, &tabSelected),
+                Input(&pathInputVal, "/")|border|bold,
 
-                    | bgcolor(Colors::BACKGROUND_COLOR)
-                    | color(Colors::FOREGROUND_COLOR)
-
-
-
+            })|flex
+    }) | bgcolor(Colors::BACKGROUND_COLOR) | color(Colors::FOREGROUND_COLOR)
 
                     | Modal(Container::Vertical({
                                 Renderer([&]{
                                     return vbox({
                                         text("Undeniable action")|hcenter|bold,
+                                            separator(),
                                         text("You sure you want to delete this path?"),
                                         text(openedFilePath)|color(Colors::THEME_COLOR_2)
                                     });
                                 }),
                                 Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
                                     Button("Anyway",[&]{
                                         cv::FileManipulation::deletePath(openedFilePath);
                                         echoCommand("Deleted path: "+ openedFilePath);
@@ -770,11 +762,13 @@ Application::Application(std::function<void()>exitor)
                                 Renderer([&]{
                                     return vbox({
                                         text("Can't overwrite a file")|hcenter|bold,
+                                        separator(),
                                         text("This file cannot be overwritten. The file's content will be dropped out."),
                                         text(openedFilePath)|color(Colors::THEME_COLOR_2)
                                     });
                                 }),
                                 Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
                                     Button("Okay",[&]{
                                         modalFileCanNotBeOverwritten=false;
                                         clearPlainText();
@@ -785,11 +779,13 @@ Application::Application(std::function<void()>exitor)
                                 Renderer([&]{
                                     return vbox({
                                         text("Sure to serialize into JSON?")|hcenter|bold,
-                                        text("The file  will be used."),
+                                        separator(),
+                                        text("The file will be used:"),
                                         text(cv::FileManipulation::clearNonRelativePath(openedFilePath))|color(Colors::THEME_COLOR_2)
                                     });
                                 }),
                                 Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
                                     Button("Accept",[&]{
                                         modalSureToSerializeIntoJson=false;
                                         saveIntoJson();
@@ -804,11 +800,13 @@ Application::Application(std::function<void()>exitor)
                                 Renderer([&]{
                                     return vbox({
                                         text("Sure to serialize into XML?")|hcenter|bold,
-                                        text("The file  will be used."),
+                                        separator(),
+                                        text("The file  will be used:"),
                                         text(cv::FileManipulation::clearNonRelativePath(openedFilePath))|color(Colors::THEME_COLOR_2)
                                     });
                                 }),
                                 Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
                                     Button("Accept",[&]{
                                         modalSureToSerializeIntoXml=false;
                                         saveIntoXml();
@@ -823,11 +821,13 @@ Application::Application(std::function<void()>exitor)
                                 Renderer([&]{
                                     return vbox({
                                         text("Undeniable action")|hcenter|bold,
-                                        text("You sure you want\nto rewrite this file?"),
+                                        separator(),
+                                        text("You sure you want to rewrite this file?"),
                                         text(openedFilePath)|color(Colors::THEME_COLOR_2)
                                     });
                                 }),
                                 Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
                                     Button("Anyway",[&]{
                                         saveFileText();
 
@@ -850,6 +850,7 @@ Application::Application(std::function<void()>exitor)
                                         will = "create new directory";
                                     return vbox({
                                         text("Undeniable action")|hcenter|bold,
+                                        separator(),
                                         text("You sure you want\nto unzip this archive?"),
                                         text(openedFilePath)|color(Colors::THEME_COLOR_2),
                                         text("It will " + will) |color(Colors::THEME_COLOR_3),
@@ -857,6 +858,7 @@ Application::Application(std::function<void()>exitor)
                                     });
                                 }),
                                 Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
                                     Button("Anyway",[&]{
                                         unzipArchive();
                                         echoCommand("Unzipping archive to folder: " + openedFilePath);
@@ -874,11 +876,13 @@ Application::Application(std::function<void()>exitor)
 
                                     return vbox({
                                         text("Undeniable action")|hcenter|bold,
+                                        separator(),
                                         text("You sure you want\nto create archive from this folder?"),
                                         text(openedFilePath)|color(Colors::THEME_COLOR_2),
                                     });
                                 }),
                                 Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
                                     Button("Anyway",[&]{
                                         zipArchive();
                                         echoCommand("Creating archive from folder" + openedFilePath);
