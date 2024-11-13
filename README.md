@@ -1,6 +1,6 @@
 # custom-viewer
 
-![](doc/Screenshot.png)
+![](docs/Screenshot.png)
 
 
 Простая TUI утилита для:
