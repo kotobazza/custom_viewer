@@ -20,9 +20,14 @@
 class Application{
 private:
     std::vector<std::string> tabValues{"Disk Usage", "Filesystem", "Dictionary", "Archive"};
-    std::string startCurrentPath{std::filesystem::current_path().string()}; 
+    std::string starterPath{std::filesystem::current_path().string()};
     std::string usingPath{std::filesystem::current_path().string()};
     std::string openedFilePath{};
+
+    std::vector<std::string> tempMenuVals{".."};
+    int a=0;
+
+
 
 
 
@@ -46,13 +51,14 @@ private:
     bool isPathDictionary{false};
     
     std::string plainTextPlaceholder{"Open some text file..."};
+    std::string archivePlainText;
 
     
     
 
 
     //* InputStringsmainPathInputVal
-    std::string mainPathInputVal{};
+    std::string pathInputVal{};
 
     //* DirMenuEntries
     std::vector<std::string> dirEntries{};
@@ -63,11 +69,13 @@ private:
     //* MainComponents
     ftxui::Component tabToggle;
     ftxui::Component tabContainer;
+    ftxui::Component filesystemMenu;
     ftxui::Component mainContainer;
+
 
     //*Tabs
     
-    ftxui::Component filesystemMenu;
+
     
     
 
@@ -101,8 +109,13 @@ private:
     ftxui::Component dictionaryLeftPannel;
     ftxui::Component dictionaryRightPannel;
     ftxui::Component dictionaryDownPannel;
-    std::string dictionaryPathInputVal{};
-    std::string dictionaryCommandExecutionString{};
+
+    ftxui::Component dictionaryIdInput;
+    ftxui::Component dictionaryNameInput;
+    ftxui::Component dictionaryContentInput;
+
+
+
     std::string dictionaryNameInputVal{};
     std::string dictionaryIdInputVal{""};
     std::string dictionaryContentInputVal{};
@@ -110,31 +123,24 @@ private:
     bool modalSureToSerializeIntoXml{false};
 
 
+
+
+
+
+
+
+
+
+    ftxui::Component exitButton{};
+
+
     //* ArchiveCreationPannels
     ftxui::Component archiveContainer;
     ftxui::Component archiveLeftPannel;
     ftxui::Component archiveRightPannel;
     ftxui::Component archiveDownPannel;
-    std::string archivePathInputVal{};
-    std::string archiveCommandExecutionString{};
     bool modalSureToSaveArchive{false};
     std::string archiveCreatingPath{};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -150,9 +156,9 @@ private:
 
     void createDiskUsageTable();
 
-    void createFilesystemContainer(std::string path);
-    void createDictionaryContainer(std::string path);
-    void createArchiveContainer(std::string path);
+    void createFilesystemContainer();
+    void createDictionaryContainer();
+    void createArchiveContainer();
 
     void openPath(std::string path);
     void openParentPath(std::string path);
@@ -168,6 +174,11 @@ private:
     void showArchive(std::string path);
     void showFile(std::string text, std::string path);
     void showStructuredFile(std::string structed_text, std::string path);
+
+
+
+    void createFilesystemMenu();
+    void echoCommand(std::string text);
     
 
     std::function<void()> exitorClosure;
