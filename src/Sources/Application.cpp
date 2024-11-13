@@ -332,17 +332,8 @@ void Application::createFilesystemContainer()
 
             }
         }),
-<<<<<<< HEAD
-        Container::Vertical({
-            Button("Delete", [&]{
-                if(cv::FileManipulation::isExistingPath(usingPath + "/" + mainPathInputVal)){
-                    openedFilePath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                    modalSureToDelete=true;
-                    mainPathInputVal="";
-                }
-            })
-            
-=======
+
+        
         Button("Create Directory", [&]{
             if(pathInputVal==""){
                 echoCommand("Enter some path into input string...(/)");
@@ -391,7 +382,7 @@ void Application::createFilesystemContainer()
                 return;
             }
             modalSureToSaveArchive=true;
->>>>>>> dcb84c7a2463dab635924df789d23207e4427820
+
 
         }),
         Maybe(
