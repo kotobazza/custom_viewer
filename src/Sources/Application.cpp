@@ -11,27 +11,39 @@
 #include <filesystem>
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/dom/flexbox_config.hpp>
 #include <ftxui/dom/node.hpp>
 #include "ftxui/screen/color.hpp"
+#include <ftxui/screen/terminal.hpp>
 #include <iterator>
 #include <string>
-#include <iostream>
 
-#include <filesystem>
 #include <cstdint>
 #include <sstream>
 
-ftxui::Component CText(std::string text) {
-  return ftxui::Renderer([text] {  //
-    return ftxui::text(text) | ftxui::underlinedDouble;
-  });
+using namespace ftxui;
+
+namespace Colors
+{
+ftxui::Color BACKGROUND_COLOR = ftxui::Color::RGB(40, 40, 40);
+ftxui::Color FOREGROUND_COLOR = ftxui::Color::RGB(240, 240, 240);
+ftxui::Color ALT_BACKGROUND_COLOR = ftxui::Color::RGB(240, 240, 240);
+ftxui::Color ALT_FOREGROUND_COLOR = ftxui::Color::RGB(60, 60, 60);
+
+ftxui::Color THEME_COLOR_1 = ftxui::Color::GreenLight;
+ftxui::Color THEME_COLOR_2 = ftxui::Color::BlueLight;
+ftxui::Color THEME_COLOR_3 = ftxui::Color::Cyan;
+ftxui::Color THEME_COLOR_4 = ftxui::Color::Orange1;
+
 }
+
+
 
 
 void Application::createDiskUsageTable()
 {
     using namespace ftxui;
-
+    
     diskUsageContainer = Container::Vertical({});
 
     std::vector<std::vector<Element>> tableValues;
@@ -48,7 +60,7 @@ void Application::createDiskUsageTable()
             text("% Free<gauge>"),
             text("% Used<gauge>")
         }
-    );
+        );
 
     for (const cv::DiskInfoRecord& record : cv::DiskInfo::getMountedPoints())
     {
@@ -72,7 +84,7 @@ void Application::createDiskUsageTable()
                 gaugeRight(pUsed/100),
                 gaugeRight(pFree/100)
             }
-        );
+            );
     }
 
     auto table = Table(tableValues);
@@ -81,24 +93,25 @@ void Application::createDiskUsageTable()
     table.SelectColumn(7).Border();
     table.SelectColumn(8).Border();
     table.SelectColumn(0).Border(LIGHT);
- 
+
     // Make first row bold with a double border.
     table.SelectRow(0).Decorate(bold);
     table.SelectRow(0).SeparatorVertical(LIGHT);
     table.SelectRow(0).Border(DOUBLE);
 
-      // Select row from the second to the last.
+    // Select row from the second to the last.
     auto content = table.SelectRows(1, -1);
     // Alternate in between 3 colors.
-    content.DecorateCellsAlternateRow(color(Color::Blue), 3, 0);
-    content.DecorateCellsAlternateRow(color(Color::Cyan), 3, 1);
-    content.DecorateCellsAlternateRow(color(Color::White), 3, 2);
+    content.DecorateCellsAlternateRow(color(Colors::THEME_COLOR_2), 3, 0);
+    content.DecorateCellsAlternateRow(color(Colors::THEME_COLOR_3), 3, 1);
+    content.DecorateCellsAlternateRow(color(Colors::FOREGROUND_COLOR), 3, 2);
 
     mainTable = table.Render();
 
-    diskUsageContainer = Renderer(diskUsageContainer, [=]{
+    diskUsageContainer = Renderer(diskUsageContainer, [&]{
         return vbox({
-            mainTable | flex
+            mainTable | flex, //EXPANDING
+            text(commandExecutionString) |underlined|bold|bgcolor(Colors::ALT_BACKGROUND_COLOR)|bold|color(Colors::ALT_FOREGROUND_COLOR)
         });
     });
 
@@ -106,12 +119,10 @@ void Application::createDiskUsageTable()
 
 void Application::openDirectory(std::string path)
 {
-    dirEntries.clear();
-    dirEntries = cv::FileManipulation::getDirectoryEntries(path);
-    usingPath = path;   
+    moveFileMenuToPath(path);
     clearPlainText();
-    commandExecutionString = "Opened directory: "+std::filesystem::path(path).filename().string();
-    dictionaryCommandExecutionString = "Opened directory: "+std::filesystem::path(path).filename().string();
+    echoCommand("Opened directory: "+std::filesystem::path(path).filename().string());
+
 }
 
 void Application::showArchive(std::string path)
@@ -119,7 +130,7 @@ void Application::showArchive(std::string path)
     cv::ArchiveReadingResults output = cv::ArchiveWorker::readArchiveEntries(path);
     if(output.state != cv::ActionState::Done)
     {
-        commandExecutionString = "ERROR: can't read provided archive: "+path;
+        echoCommand("ERROR: can't read provided archive: "+path);
         return;
     }
 
@@ -130,16 +141,16 @@ void Application::showArchive(std::string path)
         content += ent + "\n";
     }
     
-    commandExecutionString = "Opened archive: "+std::filesystem::path(path).filename().string();
+    echoCommand("Opened archive: "+std::filesystem::path(path).filename().string());
     
     
 
     if(output.entries.size()==0)
     {
-        commandExecutionString = "Opened empty archive: "+std::filesystem::path(path).filename().string();
+        echoCommand("Opened empty archive: "+std::filesystem::path(path).filename().string());
     }
 
-    plainTextString = content;
+    archivePlainText = content;
     openedFilePath = path;
     isPathArchive=true;
 }
@@ -151,11 +162,13 @@ void Application::openPath(std::string path)
     if(cv::FileManipulation::isDirectory(path))
     {
         openDirectory(path);
+        tabSelected = std::find(tabValues.begin(), tabValues.end(), "Filesystem") - tabValues.begin();
     }
 
     else if(cv::FileManipulation::isArchive(path))
     {
         showArchive(path);
+        tabSelected = std::find(tabValues.begin(), tabValues.end(), "Archive") - tabValues.begin();
 
     }
     else if(cv::FileManipulation::isFile(path))
@@ -165,13 +178,12 @@ void Application::openPath(std::string path)
         cv::ReadFileOutput output = cv::TextWorker::readFromFile(path);
         if(output.state != cv::ActionState::Done)
         {
-            commandExecutionString = "ERROR: can't read provided file: "+path;
-            dictionaryCommandExecutionString = "ERROR: can't read provided file: "+path;
+            echoCommand("ERROR: can't read provided file: "+path);
             return;
         }
 
 
-    
+
 
         if(cv::JsonWorker::isValidJson(path) || cv::XmlWorker::isValidXml(path))
         {
@@ -185,42 +197,43 @@ void Application::openPath(std::string path)
             else 
                 serializable = cv::XmlWorker::deserializeDictionary(path);
             
-            dictionaryCommandExecutionString = "Checking is " + std::string(isJson?"JSON":"XML") + " file accessible for Dictionary format. Deserialization " + std::string(serializable.state== cv::ActionState::Done ? "Done" : "Undone");
- 
+            echoCommand("Checking is " + std::string(isJson?"JSON":"XML") + " file accessible for Dictionary format. Deserialization " + std::string(serializable.state== cv::ActionState::Done ? "Done" : "Undone"));
+
             if(serializable.state == cv::ActionState::Done)
             {
                 
                 Dictionary dict = serializable.dictionary;
 
-                dictionaryCommandExecutionString = std::string("Opened ")+ (isJson ? "JSON":"XML") + " dictionary: " +std::filesystem::path(path).filename().string();
-                commandExecutionString = std::string("Found Dictionary. Opened ")+(isJson ? "JSON":"XML") + " in Dictionary tab: " + std::filesystem::path(path).filename().string();
-            
+                echoCommand(std::string("Found Dictionary. Opened ")+(isJson ? "JSON":"XML") + " in Dictionary tab: " + std::filesystem::path(path).filename().string());
+
                 dictionaryIdInputVal = std::to_string(dict.getDictionaryId());
                 dictionaryNameInputVal = dict.getDictionaryName();
                 dictionaryContentInputVal = dict.getDictionaryContent();
                 isPathDictionary=true;
                 openedFilePath = path;
+                tabSelected = std::find(tabValues.begin(), tabValues.end(), "Dictionary") - tabValues.begin();
                 return;
                 
             }
-            //dictionaryCommandExecutionString = std::string(isJson?"JSON":"XML") + " file has wrong structure for a dictionary. Opened in Filesystem";
             
         }
-        
-        commandExecutionString = "Opened file:"+std::filesystem::path(path).filename().string();
+
+        echoCommand("Opened file:"+std::filesystem::path(path).filename().string());
+        tabSelected = std::find(tabValues.begin(), tabValues.end(), "Filesystem") - tabValues.begin();
+
         plainTextString = output.content;
         if(output.content=="")
-            commandExecutionString = "Opened empty file: " + std::filesystem::path(path).filename().string();
+            echoCommand("Opened empty file:"+std::filesystem::path(path).filename().string());
         isPathFile=true;
         openedFilePath = path;
 
     }
     else
     {
-        commandExecutionString = "ERROR: wrong path/no typeof {Directiry, Archive, Text file}: "+path;
-        dictionaryCommandExecutionString = "ERROR: wrong path/no typeof {Directiry, Archive, Text file}: "+path;
+        echoCommand("ERROR: wrong path/type of {Directiry, Archive, Text file}: "+path);
+
     }
-        
+
 }
 
 
@@ -229,12 +242,12 @@ void Application::saveFileText()
     if(cv::FileManipulation::isExistingPath(openedFilePath) && cv::FileManipulation::isFile(openedFilePath))
     {
         cv::TextWorker::writeIntoFile(openedFilePath, plainTextString);
-        commandExecutionString = "File saved into: "+openedFilePath; 
+        echoCommand("File saved into: "+openedFilePath);
     }
     else
     {
-        commandExecutionString = "File wasn't saved properly...";
-        dictionaryCommandExecutionString = "File wasn't saved properly...";
+        echoCommand("File wasn't saved properly...");
+
         modalFileCanNotBeOverwritten=true;
     }
 }
@@ -243,7 +256,10 @@ void Application::saveFileText()
 void Application::moveFileMenuToPath(std::string path)
 {
     dirEntries.clear();
-    dirEntries = cv::FileManipulation::getDirectoryEntries(path);
+    dirEntries = std::vector<std::string>{".."};
+    auto dirContainig = cv::FileManipulation::getDirectoryEntries(path);
+    std::copy(dirContainig.begin(), dirContainig.end(), std::back_inserter(dirEntries));
+
     usingPath = path;
     openedFilePath = "";
     clearPlainText();
@@ -253,26 +269,29 @@ void Application::moveFileMenuToPath(std::string path)
 void Application::clearPlainText()
 {
     plainTextString = "";
+    archivePlainText = "";
+    dictionaryContentInputVal="";
+    dictionaryIdInputVal="";
+    dictionaryNameInputVal="";
     isPathFile = false;
+    isPathDictionary = false;
     isPathArchive = false;
 }
 
 void Application::openParentPath(std::string path)
 {
-
     moveFileMenuToPath(path);
     clearPlainText();
-    commandExecutionString="Opened folder: "+ std::filesystem::path(path).parent_path().string();
-    dictionaryCommandExecutionString="Opened folder: "+ std::filesystem::path(path).parent_path().string();
+    echoCommand("Opened folder: "+ std::filesystem::path(path).parent_path().string());
 }
 
 void Application::unzipArchive()
 {
     cv::ActionState output = cv::ArchiveWorker::unzipArchive(openedFilePath);
     if(output == cv::ActionState::Done)
-        commandExecutionString = "Unzipped archive: "+std::filesystem::path(openedFilePath).filename().string();
+        echoCommand("Unzipped archive: "+std::filesystem::path(openedFilePath).filename().string());
     else
-        commandExecutionString = "ERROR: can't unzip provided archive: "+openedFilePath;
+        echoCommand("ERROR: can't unzip provided archive: "+openedFilePath);
 
     moveFileMenuToPath(usingPath);
 }
@@ -282,9 +301,9 @@ void Application::zipArchive()
 {
     std::string newPath = openedFilePath+".zip";
     if(cv::ArchiveWorker::createNewZipArchive(newPath ,openedFilePath))
-        archiveCommandExecutionString = "Zipped file: " +std::filesystem::path(newPath).filename().string();
+        echoCommand("Zipped file: " +std::filesystem::path(newPath).filename().string());
     else
-       commandExecutionString = "ERROR: can't zip provided folder: "+openedFilePath;
+        echoCommand("ERROR: can't zip provided folder: "+openedFilePath);
 
     moveFileMenuToPath(usingPath);
     
@@ -292,106 +311,28 @@ void Application::zipArchive()
 }
 
 
-void Application::createFilesystemContainer(std::string path)
+void Application::createFilesystemContainer()
 {
-
-    using namespace ftxui;
-    dirEntries = cv::FileManipulation::getDirectoryEntries(path);
-
-    filesystemMenu = Menu(&dirEntries, &filesystemMenuSelected);
-        
-    filesystemMenu |= CatchEvent([&](Event event){
-            bool ret = (Event::Character("\n")==event | Event::ArrowRight==event);
-            if(ret)
-            {
-                std::string selectedPath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                openPath(selectedPath);
-                
-            }
-
-            return ret;
-        });
-
-    filesystemMenu |= CatchEvent([&](Event event){
-            bool ret = (Event::ArrowLeft==event);
-            if(ret)
-            {
-                if(usingPath!=startCurrentPath)
-                    openParentPath(std::filesystem::path(usingPath).parent_path().string());
-                else{
-                    dictionaryCommandExecutionString="Can't open higher hierarchy folder...";
-                    commandExecutionString="Can't open higher hierarchy folder...";
-                }
-                
-            }
-            return ret;
-        }); 
-
-    filesystemMenu|= CatchEvent([&](Event event){
-            bool ret = (Event::Delete == event);
-            if(ret) 
-            {
-                if(cv::FileManipulation::isExistingPath(usingPath + "/" + dirEntries[filesystemMenuSelected])){
-                    openedFilePath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                    modalSureToDelete=true;
-                }
-
-            }
-            return ret;
-        });
-
-    commandExecutionString="Open some file...";
-
-    
-    filesystemLeftPannel = Container::Vertical({
-        Renderer([&]{
-            return text("#>"+startCurrentPath)|underlined|bold|bgcolor(Color::YellowLight);
-        }),
-        Renderer([&]{
-            return text("|>"+usingPath)|underlined|bold|bgcolor(Color::GreenLight);
-        }),
-        Renderer([&]{return separator();}),
-        filesystemMenu
-    });
-
     filesystemDownPannel = Container::Horizontal({
-        Input(&mainPathInputVal, "/") | borderRounded | flex,
-        Container::Vertical({
-            Button("Enter", [&]{
-                if(mainPathInputVal==""){
-                    commandExecutionString="Enter some path into input string...";
-                    return;
-                }
-                std::string selectedPath = usingPath + "/" + mainPathInputVal;
-                openPath(selectedPath);
+        Button("Enter", [&]{
+            if(pathInputVal==""){
+                echoCommand("Enter some path into input string...(/)");
+                return;
+            }
+            std::string selectedPath = usingPath + "/" + pathInputVal;
+            openPath(selectedPath);
 
-                mainPathInputVal = "";
-            }),
-            Button("<-", [&]{
-                if(usingPath!=startCurrentPath)
-                    openParentPath(std::filesystem::path(usingPath).parent_path().string());
-                else{
-                    dictionaryCommandExecutionString="Can't open higher hierarchy folder...";
-                    commandExecutionString="Can't open higher hierarchy folder...";
-                }
-            })
+            pathInputVal = "";
         }),
-        Container::Vertical({
-            Button("Create Directory", [&]{
-                if(!cv::FileManipulation::isExistingPath(usingPath + "/"+mainPathInputVal)){
-                    cv::FileManipulation::createNewDirectory(usingPath + "/"+mainPathInputVal);
-                    moveFileMenuToPath(usingPath);
-                    commandExecutionString="Created new directory: "+usingPath + "/"+mainPathInputVal;
-                }
-            }),
-            Button("Create File", [&]{
-                if(!cv::FileManipulation::isExistingPath(usingPath + "/" + mainPathInputVal)){
-                    cv::FileManipulation::createNewFile(usingPath + "/" + mainPathInputVal);
-                    moveFileMenuToPath(usingPath);
-                    commandExecutionString="Created new file: "+usingPath + "/"+mainPathInputVal;
-                }
-            })
+        Button("<-", [&]{
+            if(usingPath!=starterPath)
+                openParentPath(std::filesystem::path(usingPath).parent_path().string());
+            else{
+                echoCommand("Can't open higher hierarchy folder!");
+
+            }
         }),
+<<<<<<< HEAD
         Container::Vertical({
             Button("Delete", [&]{
                 if(cv::FileManipulation::isExistingPath(usingPath + "/" + mainPathInputVal)){
@@ -401,31 +342,85 @@ void Application::createFilesystemContainer(std::string path)
                 }
             })
             
+=======
+        Button("Create Directory", [&]{
+            if(pathInputVal==""){
+                echoCommand("Enter some path into input string...(/)");
+                return;
+            }
+            if(!cv::FileManipulation::isExistingPath(usingPath + "/"+pathInputVal)){
+                cv::FileManipulation::createNewDirectory(usingPath + "/"+pathInputVal);
+                moveFileMenuToPath(usingPath);
+                echoCommand("Created new directory: "+usingPath + "/"+pathInputVal);
+            }
+            else{
+                echoCommand("This entry already exists!");
+            }
+        }),
+        Button("Create File", [&]{
+            if(pathInputVal==""){
+                echoCommand("Enter some path into input string...(/)");
+                return;
+            }
+            if(!cv::FileManipulation::isExistingPath(usingPath + "/" + pathInputVal)){
+                cv::FileManipulation::createNewFile(usingPath + "/" + pathInputVal);
+                moveFileMenuToPath(usingPath);
+                echoCommand("Created new file: "+usingPath + "/"+pathInputVal);
+            }
+            else{
+                echoCommand("This entry already exists!");
+            }
+        }),
+        Button("Delete", [&]{
+            if(pathInputVal==""){
+                echoCommand("Enter some path into input string... (/)");
+                return;
+            }
+            if(cv::FileManipulation::isExistingPath(usingPath + "/" + pathInputVal)){
+                openedFilePath = usingPath+'/'+pathInputVal;
+                modalSureToDelete=true;
+                pathInputVal="";
+            }
+            else{
+                echoCommand("Path in input (/) doesn't exist!");
+            }
+        }),
+        Button("Create archive", [&]{
+            if(pathInputVal==""){
+                echoCommand("Enter some directory name into input string...(/)");
+                return;
+            }
+            modalSureToSaveArchive=true;
+>>>>>>> dcb84c7a2463dab635924df789d23207e4427820
 
         }),
-        Container::Vertical({
-            Maybe(Button("Save", [&]{
+        Maybe(
+            Button("Save", [&]{
                 modalSureToWrite=true;
-            }), &isPathFile),
-            Maybe(Button("Unzip archive", [&]{
+            }), 
+        &isPathFile),
+        Maybe(
+            Button("Unzip archive", [&]{
                 modalSureToUnzip=true;
-            }), &isPathArchive)
-        })
+            }), 
+        &isPathArchive),
+
     });
 
-    filesystemRightPannel = Container::Vertical({
-        Input(&plainTextString)|borderEmpty,
-        Renderer([]{return filler();}),
-        Renderer([&]{
-            return text(commandExecutionString) | underlined | bgcolor(Color::GrayLight);
-        }),
-        filesystemDownPannel
-    });
 
-    filesystemLeftPannel = ResizableSplitLeft(filesystemLeftPannel, filesystemRightPannel, &leftPannelSizeModifier);
+
 
     filesystemUsageContainer = Container::Vertical({
-        filesystemLeftPannel
+        Container::Vertical({
+            Renderer([&]{
+                return text("File")|bold|color(Colors::THEME_COLOR_2)|hcenter;
+            }),
+            Input(&plainTextString)|borderRounded|flex,
+            Renderer([&]{
+                return text(commandExecutionString) | underlined | bgcolor(Colors::ALT_BACKGROUND_COLOR)|bold|color(Colors::ALT_FOREGROUND_COLOR);
+            }),
+        })|flex,
+        filesystemDownPannel
     });
 
     
@@ -465,464 +460,451 @@ void Application::saveIntoXml()
 }
 
 
-void Application::createDictionaryContainer(std::string path)
+void Application::createDictionaryContainer()
 {
-    using namespace ftxui;
-    dictionaryCommandExecutionString = "Open some XML or JSON file...";
+
     dictionaryDownPannel = Container::Horizontal({
-        Container::Horizontal({
-            Renderer([&]{
-                return text("Filename:")|vcenter;
-            }),
-            Input(&dictionaryPathInputVal)|borderRounded
-        })|flex,
-        Container::Vertical({
-                Button("Enter", [&]{
-                    if(dictionaryPathInputVal==""){
-                        dictionaryCommandExecutionString="Enter some path into input string...";
-                        return;
-                    }
-                    std::string selectedPath = usingPath + "/" + dictionaryPathInputVal;
-                    openPath(selectedPath);
+        Button("Enter", [&]{
+            if(pathInputVal==""){
+                echoCommand("Enter some path into input string...(/)");
+                return;
+            }
+            std::string selectedPath = usingPath + "/" + pathInputVal;
+            openPath(selectedPath);
 
-                    dictionaryPathInputVal = "";
-                }),
-                Button("<-", [&]{
-                    if(usingPath!=startCurrentPath)
-                        openParentPath(std::filesystem::path(usingPath).parent_path().string());
-                    else{
-                        dictionaryCommandExecutionString="Can't open higher hierarchy folder...";
-                        commandExecutionString="Can't open higher hierarchy folder...";
-                    }
-                })
-            }),
-        Container::Vertical({
-            Button("Save in JSON", [&]{
-                if(dictionaryPathInputVal=="")
-                {
-                    dictionaryCommandExecutionString="Enter some path into input string...";
-                    return;
-                }
-                else if(dictionaryCommandExecutionString.length() >= 5 && dictionaryCommandExecutionString.substr(dictionaryCommandExecutionString.length() - 5) == ".json ")
-                {
-                    openedFilePath = usingPath + "/" + dictionaryPathInputVal;
-                    modalSureToSerializeIntoJson=true;
-                    
-                }
-                else{
-                    dictionaryCommandExecutionString="Unappropriate file extension...";
-                    openedFilePath = usingPath + "/" + dictionaryPathInputVal;
-                    modalSureToSerializeIntoJson=true;
-                }
-
-            }),
-            Button("Save in XML", [&]{
-                if(dictionaryPathInputVal=="")
-                {
-                    dictionaryCommandExecutionString="Enter some path into input string...";
-                }
-                else if(dictionaryCommandExecutionString.length() >= 4 && dictionaryCommandExecutionString.substr(dictionaryCommandExecutionString.length() - 4) == ".xml ")
-                {
-                    openedFilePath = usingPath + "/" + dictionaryPathInputVal;
-                    modalSureToSerializeIntoXml=true;
-
-                }
-                else{
-                    openedFilePath = usingPath + "/" + dictionaryPathInputVal;
-                    dictionaryCommandExecutionString="Unappropriate file extension...";
-                    openedFilePath = usingPath + "/" + dictionaryPathInputVal;
-                    modalSureToSerializeIntoXml=true;
-                }
-            })
-        })
-    });
-    dirEntries = cv::FileManipulation::getDirectoryEntries(path);
-    
-    dictionaryLeftPannel = Container::Vertical({
-        Renderer([&]{
-            return text("#>"+startCurrentPath)|underlined|bold|bgcolor(Color::YellowLight);
+            pathInputVal = "";
         }),
-        Renderer([&]{
-            return text("/>"+usingPath)|underlined|bold|bgcolor(Color::GreenLight);
+        Button("<-", [&]{
+            if(usingPath!=starterPath)
+                openParentPath(std::filesystem::path(usingPath).parent_path().string());
+            else{
+
+                echoCommand("Can't open higher hierarchy folder!");
+            }
         }),
-        Renderer([&]{return separator();}),
-        Menu(&dirEntries, &filesystemMenuSelected)
-        | CatchEvent([&](Event event){
-            bool ret = (Event::Character("\n")==event | Event::ArrowRight==event);
-            if(ret)
+        Button("Save in JSON", [&]{
+            if(pathInputVal=="")
             {
-                std::string selectedPath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                openPath(selectedPath);
+                echoCommand("Enter some path into input string...(/)");
+                return;
+            }
+
+            if(pathInputVal.length() >= 5 && pathInputVal.substr(pathInputVal.length() - 5) == ".json ")
+            {
+                openedFilePath = usingPath + "/" + pathInputVal;
+                modalSureToSerializeIntoJson=true;
                 
             }
-
-            return ret;
-        })
-        | CatchEvent([&](Event event){
-            bool ret = (Event::ArrowLeft==event);
-            if(ret)
-            {
-                if(usingPath!=startCurrentPath)
-                    openParentPath(std::filesystem::path(usingPath).parent_path().string());
-                else{
-                    dictionaryCommandExecutionString="Can't open higher hierarchy folder...";
-                    commandExecutionString="Can't open higher hierarchy folder...";
-                }
+            else{
+                echoCommand("Unappropriate file extension!");
+                openedFilePath = usingPath + "/" + pathInputVal;
+                modalSureToSerializeIntoJson=true;
             }
-            return ret;
-        }) 
-        | CatchEvent([&](Event event){
-            bool ret = (Event::Delete == event);
-        
-            if(ret) 
+
+        }),
+        Button("Save in XML", [&]{
+            if(pathInputVal=="")
             {
-                if(cv::FileManipulation::isExistingPath(usingPath + "/" + dirEntries[filesystemMenuSelected])){
-                    openedFilePath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                    modalSureToDelete=true;
-                }
+                echoCommand("Enter some path into input string...");
 
             }
-            return ret;
+            else if(pathInputVal.length() >= 4 && pathInputVal.substr(pathInputVal.length() - 4) == ".xml ")
+            {
+                openedFilePath = usingPath + "/" + pathInputVal;
+                modalSureToSerializeIntoXml=true;
+
+            }
+            else{
+                echoCommand("Unappropriate file extension!");
+                openedFilePath = usingPath + "/" + pathInputVal;
+                modalSureToSerializeIntoXml=true;
+            }
         }),
     });
 
-    dictionaryRightPannel = Container::Vertical({
-        Container::Vertical({
-            Renderer([&]{
-                return text("Dictionary")|bold|color(Color::BlueLight)|center;
-            }),
-            Container::Horizontal({
-                Renderer([&]{
-                    return text("ID#")|bold|center;
-                }),
-                Input(&dictionaryIdInputVal)|border|vcenter|flex
-                | CatchEvent([&](Event event) {
-                    return event.is_character() && !std::isdigit(event.character()[0]);
-                })
-                | CatchEvent([&](Event event) {
-                    return event.is_character() && dictionaryIdInputVal.size() > 8;
-                })
-            }),
-            Container::Horizontal({
-                Renderer([&]{
-                    return text("Name: ")|bold|center;
-                }),
-                Input(&dictionaryNameInputVal)|border|vcenter|flex
-            }),
-            Renderer([&]{
-                return vbox({
-                    separator(),
-                    filler()
-                });
-                
-            }),
-            Renderer([&]{
-                return text("Content")|bold|color(Color::BlueLight)|center;
-            }),
-            Input(&dictionaryContentInputVal)|border|vcenter|flex
-            
-        }),
-        Renderer([&]{
-            return filler();
-        }),
-        Renderer([&]{
-            return text(dictionaryCommandExecutionString) | underlined | bgcolor(Color::GrayLight);
-        }),
-        dictionaryDownPannel
-    });
-
-    dictionaryLeftPannel = ResizableSplitLeft(dictionaryLeftPannel, dictionaryRightPannel, &leftPannelSizeModifier);
 
     dictionaryUsageContainer = Container::Vertical({
-        dictionaryLeftPannel
+        Renderer([&]{
+                return text("Dictionary")|bold|color(Colors::THEME_COLOR_2)|hcenter;
+        }),
+        Container::Horizontal({
+            Renderer([&]{
+                return text("ID# ")|bold;
+            }),
+            Input(&dictionaryIdInputVal)|underlined
+                | CatchEvent([&](Event event) {
+                        return event.is_character() && !std::isdigit(event.character()[0]);
+                    })
+                | CatchEvent([&](Event event) {
+                        return event.is_character() && dictionaryIdInputVal.size() > 8;
+                    })
+        }),
+        Container::Horizontal({
+            Renderer([&]{
+                return text("Name: ")|bold;
+            }),
+            Input(&dictionaryNameInputVal)|underlined
+        }),
+
+        Container::Vertical({
+            Renderer([&]{
+                return text("Content")|bold|color(Colors::THEME_COLOR_2)|hcenter; 
+            }),
+            Input(&dictionaryContentInputVal)|flex,
+        })|border|flex,
+        Renderer([&]{
+            return text(commandExecutionString) | underlined | bgcolor(Colors::ALT_BACKGROUND_COLOR)|bold|color(Colors::ALT_FOREGROUND_COLOR);
+        }),
+        dictionaryDownPannel,
+
         
     });
+
+    
 }
 
 
 
 
 
-void Application::createArchiveContainer(std::string path)
+void Application::createArchiveContainer()
 {
-    using namespace ftxui;
-    dirEntries = cv::FileManipulation::getDirectoryEntries(path);
-    archiveCommandExecutionString = "<Ctrl+A> to create a zip archive from selected folder...";
-
-
-
-
-
-    auto archiveFileMenu=Menu(&dirEntries, &filesystemMenuSelected)
-        | CatchEvent([&](Event event){
-            bool ret = (Event::Character("\n")==event | Event::ArrowRight==event);
-            if(ret)
-            {
-                std::string selectedPath = usingPath+'/'+dirEntries[filesystemMenuSelected];
-                openPath(selectedPath);
-                
-            }
-            return ret;
-        });
-
-    archiveFileMenu |=  CatchEvent([&](Event event){
-            bool ret = (Event::ArrowLeft==event);
-            if(ret)
-            {
-                if(usingPath!=startCurrentPath)
-                    openParentPath(std::filesystem::path(usingPath).parent_path().string());
-                else{
-                    dictionaryCommandExecutionString="Can't open higher hierarchy folder...";
-                    archiveCommandExecutionString="Can't open higher hierarchy folder...";
-                    commandExecutionString="Can't open higher hierarchy folder...";
-                }
-            }
-            return ret;
-        }) ;
-
-    archiveFileMenu |=  CatchEvent([&](Event event){
-            bool ret = (Event::CtrlA==event);
-            if(ret)
-            {
-                if(cv::FileManipulation::isDirectory(usingPath+"/"+dirEntries[filesystemMenuSelected]))
-                {
-                    archiveCreatingPath = usingPath+"/"+dirEntries[filesystemMenuSelected];
-                    modalSureToSaveArchive=true;
-                }
-                else
-                {
-                    archiveCommandExecutionString="Select a folder instead of file... ";
-                }
-            }
-            return ret;
-        }); 
-
-    archiveLeftPannel = Container::Vertical({
-        Renderer([&]{
-            return text("#>"+startCurrentPath)|underlined|bold|bgcolor(Color::YellowLight);
-        }),
-        Renderer([&]{
-            return text("/>"+usingPath)|underlined|bold|bgcolor(Color::GreenLight);
-        }),
-        Renderer([&]{return separator();}),
-        archiveFileMenu
-    });
-
-
+    
     archiveDownPannel=Container::Horizontal({});
 
 
-    archiveRightPannel = Container::Vertical({
+    archiveContainer = Container::Vertical({
         Container::Vertical({
             Renderer([&]{
-                return text(archiveCommandExecutionString) |underlined|bold|bgcolor(Color::GrayLight);
+                return text("Archive")|bold|color(Colors::THEME_COLOR_2)|hcenter;
+            }),
+            Input(&archivePlainText)|borderRounded|flex,
+            
+            Renderer([&]{
+                return text(commandExecutionString) |underlined|bold|bgcolor(Colors::ALT_BACKGROUND_COLOR)|bold|color(Colors::ALT_FOREGROUND_COLOR);
             })
-        }),
+        })|flex,
         archiveDownPannel
     });
 
-    archiveLeftPannel = ResizableSplitLeft(archiveLeftPannel, archiveRightPannel, &leftPannelSizeModifier);
 
-    archiveContainer = Container::Vertical({
-        archiveLeftPannel
-        
+}
+
+
+void Application::echoCommand(std::string text)
+{
+    commandExecutionString = " "+ text;
+}
+
+
+
+
+void Application::createFilesystemMenu()
+{
+    moveFileMenuToPath(usingPath);
+
+    auto flexOption = FlexboxConfig().Set(FlexboxConfig::AlignItems::Stretch);
+
+    filesystemMenu = Container::Vertical({
+        Renderer([&]{
+            return vbox({
+                text("Filesystem menu")|bold|center,
+                separator()
+            });
+        }),
+
+        Menu({&dirEntries, &filesystemMenuSelected})
+            | CatchEvent([&](Event event){
+                  bool ret = (Event::Character("\n")==event);
+                  if(ret)
+                  {
+                      if(dirEntries[filesystemMenuSelected] == "..")
+                      {
+                          if(usingPath!=starterPath)
+                              openPath(cv::FileManipulation::getParentPath(usingPath));
+                          else
+                          {
+                              echoCommand("Can't open higher hierarchy folder!");
+                          }
+                      }
+                      else
+                      {
+                          std::string selectedPath = usingPath+'/'+dirEntries[filesystemMenuSelected];
+                          openPath(selectedPath);
+                      }
+
+
+
+                  }
+                  return ret;
+              })
+            | CatchEvent([&](Event event){
+                  bool ret = (Event::Delete == event);
+
+                  if(ret)
+                  {
+                      openedFilePath = usingPath+'/'+dirEntries[filesystemMenuSelected];
+                      modalSureToDelete=true;
+
+                  }
+                  return ret;
+              })
+            | CatchEvent([&](Event event){
+                  bool ret = (Event::CtrlA==event);
+                  if(ret)
+                  {
+                      if(cv::FileManipulation::isDirectory(usingPath+"/"+dirEntries[filesystemMenuSelected]))
+                      {
+                          archiveCreatingPath = usingPath+"/"+dirEntries[filesystemMenuSelected];
+                          modalSureToSaveArchive=true;
+                      }
+                      else
+                      {
+                          echoCommand("<Ctrl+A> pressed. Select a folder in Filesystem Menu before pressing <Ctrl+A>");
+                      }
+                  }
+                  return ret;
+              }),
     });
 
 
-
-
-
-
 }
+
 
 
 
 Application::Application(std::function<void()>exitor)
 {
-    using namespace ftxui;
-
     exitorClosure=exitor;
 
-    tabToggle = Toggle(&tabValues, &tabSelected) | borderRounded;
+
+
+    createFilesystemMenu();
+
 
 
     createDiskUsageTable();
-    std::cout<< "diskusagetable_create\n";
 
-    createFilesystemContainer(std::filesystem::current_path().string());
-    std::cout<< "filesystemcontainer_create\n";
+    createFilesystemContainer();
 
-    createDictionaryContainer(std::filesystem::current_path().string());
-    std::cout<<"dictionarycontainer_create\n";
+    createDictionaryContainer();
 
-    createArchiveContainer(std::filesystem::current_path().string());
-    std::cout<<"arhicvecontainer_create\n";
+    createArchiveContainer();
 
 
 
-
-    tabContainer = Container::Tab({
-        diskUsageContainer,
-        filesystemUsageContainer,
-        dictionaryUsageContainer,
-        archiveContainer
-    }, &tabSelected);
-
-
-    mainContainer = Container::Vertical({
-        Container::Horizontal({
-            tabToggle|flex,
-            Button("X", [&]{
-                exitorClosure();
-            }) | bold
-        }),
-        tabContainer
-    })
-    | Modal(Container::Vertical({
-        Renderer([&]{
-            return vbox({
-                text("Undeniable action")|hcenter|bold,
-                text("You sure you want\nto delete this path?"),
-                text(openedFilePath)|color(Color::Blue)
-            });
-        }),
-        Container::Horizontal({
-            Button("Anyway",[&]{
-                cv::FileManipulation::deletePath(openedFilePath);
-                commandExecutionString="Deleted path: "+ openedFilePath;
-                moveFileMenuToPath(usingPath);
-                modalSureToDelete=false;
-                
-                
+    mainContainer = Container::Horizontal({
+        Container::Vertical({
+            filesystemMenu|border|flex,
+            Renderer([&]{
+                return vbox({
+                    text("Help")|bold|center,
+                    separator(),
+                    hbox({
+                        text("Enter")|color(Colors::THEME_COLOR_2)|border,
+                        text(" Open folder or file")|vcenter,
+                    }),
+                    hbox({
+                        text("Ctrl")|color(Colors::THEME_COLOR_2)|border,
+                        text("A")|color(Colors::THEME_COLOR_1)|border,
+                        text(" Create an archive")|vcenter,
+                    }),
+                    hbox({
+                        text("Delete")|color(Colors::THEME_COLOR_1)|border,
+                        text(" Delete folder or file")|vcenter,
+                    })
+                })|border;
             }),
-            Button("Cancel",[&]{
-                modalSureToDelete=false;
-                
-            })
-        })
-    }), &modalSureToDelete)
-    | Modal(Container::Vertical({
-        Renderer([&]{
-            return vbox({
-                text("Can't overwrite a file")|hcenter|bold,
-                text("This file cannot be overwritten. The file's content will be dropped out."),
-                text(openedFilePath)|color(Color::Blue)
-            });
+
         }),
-        Container::Horizontal({
-            Button("Okay",[&]{
-                modalFileCanNotBeOverwritten=false;
-                clearPlainText();
-            })
-        })
-    }), &modalFileCanNotBeOverwritten)
-    | Modal(Container::Vertical({
-        Renderer([&]{
-            return vbox({
-                text("Sure to serialize into JSON?")|hcenter|bold,
-                text("The file  will be used."),
-                text(cv::FileManipulation::clearNonRelativePath(openedFilePath))|color(Color::Blue)
-            });
-        }),
-        Container::Horizontal({
-            Button("Accept",[&]{
-                modalSureToSerializeIntoJson=false;
-                saveIntoJson();
-                
-            }),
-            Button("Cancel",[&]{
-                modalSureToSerializeIntoJson=false;
-            })
-        })
-    }), &modalSureToSerializeIntoJson)
-    |Modal(Container::Vertical({
-        Renderer([&]{
-            return vbox({
-                text("Sure to serialize into XML?")|hcenter|bold,
-                text("The file  will be used."),
-                text(cv::FileManipulation::clearNonRelativePath(openedFilePath))|color(Color::Blue)
-            });
-        }),
-        Container::Horizontal({
-            Button("Accept",[&]{
-                modalSureToSerializeIntoXml=false;
-                saveIntoXml();
-                
-            }),
-            Button("Cancel",[&]{
-                modalSureToSerializeIntoXml=false;
-            })
-        })
-    }), &modalSureToSerializeIntoXml)
-    | Modal(Container::Vertical({
-        Renderer([&]{
-            return vbox({
-                text("Undeniable action")|hcenter|bold,
-                text("You sure you want\nto rewrite this file?"),
-                text(openedFilePath)|color(Color::Blue)
-            });
-        }),
-        Container::Horizontal({
-            Button("Anyway",[&]{
-                saveFileText();
-                
-                modalSureToWrite=false;
-                mainPathInputVal="";
-            }),
-            Button("Cancel",[&]{
-                modalSureToWrite=false;
-                mainPathInputVal="";
-            })
-        })
-    }), &modalSureToWrite)
-    | Modal(Container::Vertical({
-        Renderer([&]{
-            std::string will{};
-            std::string newPath = usingPath + "/" +  cv::FileManipulation::transformPathFromArchiveToFolder(openedFilePath);
-            if(cv::FileManipulation::isExistingPath(newPath))
-                will = "refill the existing directiry";
-            else
-                will = "create new directory";
-            return vbox({
-                text("Undeniable action")|hcenter|bold,
-                text("You sure you want\nto unzip this archive?"),
-                text(openedFilePath)|color(Color::Blue),
-                text("It will " + will) |color(Color::Cyan),
-                text("creating this new path: "+ newPath)
-            });
-        }),
-        Container::Horizontal({
-            Button("Anyway",[&]{
-                unzipArchive();
-                commandExecutionString = "Unzipping archive to folder: " + openedFilePath;
-                modalSureToUnzip=false;
-            }),
-            Button("Cancel",[&]{
-                modalSureToUnzip=false;
-            })
-        })
-    }), &modalSureToUnzip)
-    | Modal(Container::Vertical({
-        Renderer([&]{
-            openedFilePath = archiveCreatingPath;
-            
-            return vbox({
-                text("Undeniable action")|hcenter|bold,
-                text("You sure you want\nto create archive from this folder?"),
-                text(openedFilePath)|color(Color::Blue),
-            });
-        }),
-        Container::Horizontal({
-            Button("Anyway",[&]{
-                zipArchive();
-                archiveCommandExecutionString = "Creating archive from folder" + openedFilePath;
-                modalSureToSaveArchive=false;
-            }),
-            Button("Cancel",[&]{
-                modalSureToSaveArchive=false;
-            })
-        })
-    }), &modalSureToSaveArchive);
+        Container::Vertical({
+                Container::Horizontal({
+                    Renderer([&]{
+                            return vbox({
+                            text("  #>"+starterPath)|bold|color(Colors::THEME_COLOR_1),
+                            text("  />"+usingPath)|bold|color(Colors::THEME_COLOR_2),
+                            text("  !>"+openedFilePath)|bold|color(Colors::THEME_COLOR_4),
+                            
+                        });
+                    }),
+                    Renderer([&]{return filler();}),
+                    Toggle(&tabValues, &tabSelected) | borderRounded,
+                    Button(" X ", [&]{exitorClosure();}),
+
+                }),
+                Container::Tab({
+                    diskUsageContainer|flex,
+                    filesystemUsageContainer|flex,
+                    dictionaryUsageContainer|flex,
+                    archiveContainer|flex
+                }, &tabSelected),
+                Input(&pathInputVal, "/")|border|bold,
+
+            })|flex
+    }) | bgcolor(Colors::BACKGROUND_COLOR) | color(Colors::FOREGROUND_COLOR)
+
+                    | Modal(Container::Vertical({
+                                Renderer([&]{
+                                    return vbox({
+                                        text("Undeniable action")|hcenter|bold,
+                                            separator(),
+                                        text("You sure you want to delete this path?"),
+                                        text(openedFilePath)|color(Colors::THEME_COLOR_2)
+                                    });
+                                }),
+                                Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
+                                    Button("Anyway",[&]{
+                                        cv::FileManipulation::deletePath(openedFilePath);
+                                        echoCommand("Deleted path: "+ openedFilePath);
+
+                                        moveFileMenuToPath(usingPath);
+                                        modalSureToDelete=false;
+                                        
+
+
+                                    }),
+                                    Button("Cancel",[&]{
+                                        modalSureToDelete=false;
+
+                                    })
+                                })
+                            })|border|bgcolor(Colors::BACKGROUND_COLOR), &modalSureToDelete)
+                    | Modal(Container::Vertical({
+                                Renderer([&]{
+                                    return vbox({
+                                        text("Can't overwrite a file")|hcenter|bold,
+                                        separator(),
+                                        text("This file cannot be overwritten. The file's content will be dropped out."),
+                                        text(openedFilePath)|color(Colors::THEME_COLOR_2)
+                                    });
+                                }),
+                                Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
+                                    Button("Okay",[&]{
+                                        modalFileCanNotBeOverwritten=false;
+                                        clearPlainText();
+                                    })
+                                })
+                            })|border|bgcolor(Colors::BACKGROUND_COLOR), &modalFileCanNotBeOverwritten) 
+                    | Modal(Container::Vertical({
+                                Renderer([&]{
+                                    return vbox({
+                                        text("Sure to serialize into JSON?")|hcenter|bold,
+                                        separator(),
+                                        text("The file will be used:"),
+                                        text(cv::FileManipulation::clearNonRelativePath(openedFilePath))|color(Colors::THEME_COLOR_2)
+                                    });
+                                }),
+                                Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
+                                    Button("Accept",[&]{
+                                        modalSureToSerializeIntoJson=false;
+                                        saveIntoJson();
+
+                                    }),
+                                    Button("Cancel",[&]{
+                                        modalSureToSerializeIntoJson=false;
+                                    })
+                                })
+                            })|border|bgcolor(Colors::BACKGROUND_COLOR), &modalSureToSerializeIntoJson)
+                    |Modal(Container::Vertical({
+                                Renderer([&]{
+                                    return vbox({
+                                        text("Sure to serialize into XML?")|hcenter|bold,
+                                        separator(),
+                                        text("The file  will be used:"),
+                                        text(cv::FileManipulation::clearNonRelativePath(openedFilePath))|color(Colors::THEME_COLOR_2)
+                                    });
+                                }),
+                                Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
+                                    Button("Accept",[&]{
+                                        modalSureToSerializeIntoXml=false;
+                                        saveIntoXml();
+
+                                    }),
+                                    Button("Cancel",[&]{
+                                        modalSureToSerializeIntoXml=false;
+                                    })
+                                })
+                            })|border|bgcolor(Colors::BACKGROUND_COLOR), &modalSureToSerializeIntoXml)
+                    | Modal(Container::Vertical({
+                                Renderer([&]{
+                                    return vbox({
+                                        text("Undeniable action")|hcenter|bold,
+                                        separator(),
+                                        text("You sure you want to rewrite this file?"),
+                                        text(openedFilePath)|color(Colors::THEME_COLOR_2)
+                                    });
+                                }),
+                                Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
+                                    Button("Anyway",[&]{
+                                        saveFileText();
+
+                                        modalSureToWrite=false;
+                                        pathInputVal="";
+                                    }),
+                                    Button("Cancel",[&]{
+                                        modalSureToWrite=false;
+                                        pathInputVal="";
+                                    })
+                                })
+                            })|border|bgcolor(Colors::BACKGROUND_COLOR), &modalSureToWrite)
+                    | Modal(Container::Vertical({
+                                Renderer([&]{
+                                    std::string will{};
+                                    std::string newPath = usingPath + "/" +  cv::FileManipulation::transformPathFromArchiveToFolder(openedFilePath);
+                                    if(cv::FileManipulation::isExistingPath(newPath))
+                                        will = "refill the existing directiry";
+                                    else
+                                        will = "create new directory";
+                                    return vbox({
+                                        text("Undeniable action")|hcenter|bold,
+                                        separator(),
+                                        text("You sure you want\nto unzip this archive?"),
+                                        text(openedFilePath)|color(Colors::THEME_COLOR_2),
+                                        text("It will " + will) |color(Colors::THEME_COLOR_3),
+                                        text("creating this new path: "+ newPath)
+                                    });
+                                }),
+                                Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
+                                    Button("Anyway",[&]{
+                                        unzipArchive();
+                                        echoCommand("Unzipping archive to folder: " + openedFilePath);
+                                        modalSureToUnzip=false;
+                                    }),
+                                    Button("Cancel",[&]{
+                                        modalSureToUnzip=false;
+
+                                    })
+                                })
+                            })|border|bgcolor(Colors::BACKGROUND_COLOR), &modalSureToUnzip)
+                    | Modal(Container::Vertical({
+                                Renderer([&]{
+                                    openedFilePath = archiveCreatingPath;
+
+                                    return vbox({
+                                        text("Undeniable action")|hcenter|bold,
+                                        separator(),
+                                        text("You sure you want\nto create archive from this folder?"),
+                                        text(openedFilePath)|color(Colors::THEME_COLOR_2),
+                                    });
+                                }),
+                                Container::Horizontal({
+                                    Renderer([&]{return filler();})|flex,
+                                    Button("Anyway",[&]{
+                                        zipArchive();
+                                        echoCommand("Creating archive from folder" + openedFilePath);
+                                        modalSureToSaveArchive=false;
+                                    }),
+                                    Button("Cancel",[&]{
+                                        modalSureToSaveArchive=false;
+                                    })
+                                })
+                            })|border|bgcolor(Colors::BACKGROUND_COLOR), &modalSureToSaveArchive);
     
 }
 
